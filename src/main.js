@@ -116,8 +116,11 @@ function getSavedNames() {
 }
 
 function saveSketch() {
-  const name = prompt('Save sketch as:', currentSketchName || '');
-  if (!name) return;
+  let name = currentSketchName;
+  if (!name) {
+    name = prompt('Save sketch as:');
+    if (!name) return;
+  }
   localStorage.setItem(SKETCH_PREFIX + name, editor.getCode());
   currentSketchName = name;
   rebuildSelector();
@@ -180,7 +183,7 @@ demoSelect.addEventListener('change', () => {
   if (val.startsWith('demo:')) {
     const name = val.slice(5);
     editor.setCode(DEMOS[name]);
-    currentSketchName = null;
+    currentSketchName = name;
     run();
   } else if (val.startsWith('sketch:')) {
     loadSketch(val.slice(7));

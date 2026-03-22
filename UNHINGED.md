@@ -4,12 +4,8 @@ Append only. No structure required. Fragments OK. Don't self-censor.
 
 ---
 
-## Aesthetics / Design Principles
+## Strudel / Integration Notes
 
-- Want to articulate the "why" behind design choices someday
-- Current north star: **as intuitive as possible**
-- Strudel already nails this — lpf is lpf, you type notes and they sound like that
-- Hard to beat that directness. So what does dollar-tee add on top?
 - dollar-tee = **live DJing but with visuals**
 - Strudel handles sound, dollar-tee handles the visual layer
 - Goal: connect dollar-tee to Strudel someday (right now it's prototype stage)
@@ -419,4 +415,57 @@ The `_` signals "auto-destructure from the object keys." Preprocessor rewrites i
 - `{i: {from: 3, to: 10, step: 2}}` — same, fully spelled out
 
 **Zero repetition requires syntactic sugar** — a preprocessor step that sees the `_` placeholder and auto-injects the object keys as variables. Not a big lift since user code already goes through `new Function()` compilation.
+
+---
+
+## Vector Easing
+
+- Current easing is scalar (one number, 0→1→mapped value)
+- Want: **vector easing** — ease a whole point/vector at once
+- `tween($kick, [0, 0], [100, 200], easeOutCubic)` → returns `[x, y]`
+- Useful for position, color, any multi-dimensional value
+- Should just work component-wise? Or path-based (curved trajectories)?
+
+---
+
+## Draggable Cue Points on Canvas — Mathematica `Locator` Style
+
+Like Mathematica's `Locator[]` — place draggable points directly on the canvas, access them in code.
+
+- Click on the canvas to place a **cue point**
+- Each cue gets a `$`-name: `$p1`, `$center`, `$target`, whatever
+- Access in code: `$p1.x`, `$p1.y`
+- Drag them around live → code updates in real time
+- It's `val()` but for 2D positions — the canvas IS the slider
+
+```js
+// $p1 and $p2 are draggable points placed on the canvas
+render(
+  line($p1.x, $p1.y, $p2.x, $p2.y),
+  circle($p1.x, $p1.y, 10),
+  circle($p2.x, $p2.y, 10),
+)
+```
+
+- Same philosophy as `val()`: code is source of truth, UI just provides a way to set values visually
+- Same philosophy as timeline intervals: `$`-named variables wired from UI to code
+- **Pattern emerging**: `$` prefix = "value controlled by UI, not by code"
+  - `$kick.s` / `$kick.e` — from timeline
+  - `$p1.x` / `$p1.y` — from canvas locators
+  - `val()` — from inline sliders
+  - All the same idea: UI ↔ code binding
+
+---
+
+## Color Schemes as Functions — `[0,1] → Color`
+
+- Mathematica's `ColorData["scheme"]` — a function from `[0,1]` to color. Pick a scheme, call it with a number, get a color.
+- We need this. A color scheme is just a function: `scheme(0.5) → some color`.
+- The killer combo: **easing × color scheme**
+  - `progress` (from interval, time, whatever) → `easing(progress)` → `scheme(easedValue)` → color
+  - Easing shapes the timing, color scheme shapes the look
+  - `scheme(easeOutCubic(progress))` — that's it, that's the whole thing
+- Already have `Color.palette` but it's discrete (indexed colors). Need continuous `[0,1] → Color` functions.
+- Standard schemes to ship: Viridis, Inferno, Plasma, Magma, Rainbow, SunsetColors, etc.
+- Custom schemes? User defines control points, we interpolate? Or just ship the good ones.
 

@@ -23,13 +23,14 @@
     </div>
   </div>
   <div id="transport">
-    <button id="audio-load-btn" title="Load audio file">&#9835;</button>
-    <input type="file" id="audio-file" accept="audio/*" hidden>
-    <button id="play-btn" title="Play / Pause" disabled>&#9654;</button>
-    <div id="timeline">
-      <div id="timeline-fill"></div>
+    <div id="transport-controls">
+      <button id="audio-load-btn" title="Load audio file">&#9835;</button>
+      <input type="file" id="audio-file" accept="audio/*" hidden>
+      <button id="play-btn" title="Play / Pause" disabled>&#9654;</button>
+      <span id="audio-time">&mdash;:&mdash;&mdash;</span>
+      <button id="snap-btn" class="active" title="Snap to grid">Snap</button>
     </div>
-    <span id="audio-time">&mdash;:&mdash;&mdash;</span>
+    <div id="beat-grid"></div>
   </div>
   <script type="module" src="/src/main.js"></script>
 </body>

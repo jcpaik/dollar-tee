@@ -5,10 +5,18 @@ export function createAudio() {
   let loaded = false;
 
   return {
-    load(file) {
+    loadFile(file) {
       if (audio.src) URL.revokeObjectURL(audio.src);
-      const url = URL.createObjectURL(file);
-      audio.src = url;
+      audio.src = URL.createObjectURL(file);
+      return this._waitLoaded();
+    },
+
+    loadPath(path) {
+      audio.src = path;
+      return this._waitLoaded();
+    },
+
+    _waitLoaded() {
       return new Promise((resolve, reject) => {
         audio.addEventListener('loadedmetadata', () => {
           loaded = true;

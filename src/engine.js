@@ -8,6 +8,7 @@ export function createEngine(canvas) {
   let running = false;
   let tickCb = null;
   let errorCb = null;
+  let preTickCb = null;
   let timeSource = null;
 
   function getTime() {
@@ -18,6 +19,7 @@ export function createEngine(canvas) {
   function loop() {
     if (!running) return;
     const t = getTime();
+    if (preTickCb) preTickCb(t);
     const W = canvas.width;
     const H = canvas.height;
 
@@ -39,6 +41,7 @@ export function createEngine(canvas) {
     setDraw(fn)   { drawFn = fn; },
     set onTick(fn)  { tickCb = fn; },
     set onError(fn) { errorCb = fn; },
+    set onPreTick(fn) { preTickCb = fn; },
     setTimeSource(fn) { timeSource = fn; },
   };
 }

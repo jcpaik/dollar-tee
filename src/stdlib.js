@@ -2,6 +2,22 @@
 // Everything here is injected into user code as top-level names.
 
 import { Color } from './color.js';
+import { $loop, $beat, $bars, tween } from './intervals.js';
+import {
+  easeLinear,
+  easeInSine,    easeOutSine,    easeInOutSine,
+  easeInQuad,    easeOutQuad,    easeInOutQuad,
+  easeInCubic,   easeOutCubic,   easeInOutCubic,
+  easeInQuart,   easeOutQuart,   easeInOutQuart,
+  easeInQuint,   easeOutQuint,   easeInOutQuint,
+  easeInExpo,    easeOutExpo,    easeInOutExpo,
+  easeInCirc,    easeOutCirc,    easeInOutCirc,
+  easeInBack,    easeOutBack,    easeInOutBack,
+  easeInElastic, easeOutElastic, easeInOutElastic,
+  easeInBounce,  easeOutBounce,  easeInOutBounce,
+  cubicBezier,
+  spring,
+} from './easing.js';
 
 // ── Math ──────────────────────────────────────────────────────────
 
@@ -12,9 +28,6 @@ function map(v, inMin, inMax, outMin, outMax) {
 }
 
 function ease(t)      { return t * t * (3 - 2 * t); }
-function easeIn(t)    { return t * t; }
-function easeOut(t)   { return t * (2 - t); }
-function easeInOut(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
 
 // Simple hash-based noise
 function _hash(n) { const s = Math.sin(n) * 43758.5453123; return s - Math.floor(s); }
@@ -188,8 +201,21 @@ function draw(ctx, items) { renderScene(ctx, items); }
 export const stdlib = {
   // Math
   lerp, clamp, map,
-  ease, easeIn, easeOut, easeInOut,
-  noise, noise2,
+  ease, noise, noise2,
+
+  // Easings (33 Penner + utilities)
+  easeLinear,
+  easeInSine,    easeOutSine,    easeInOutSine,
+  easeInQuad,    easeOutQuad,    easeInOutQuad,
+  easeInCubic,   easeOutCubic,   easeInOutCubic,
+  easeInQuart,   easeOutQuart,   easeInOutQuart,
+  easeInQuint,   easeOutQuint,   easeInOutQuint,
+  easeInExpo,    easeOutExpo,    easeInOutExpo,
+  easeInCirc,    easeOutCirc,    easeInOutCirc,
+  easeInBack,    easeOutBack,    easeInOutBack,
+  easeInElastic, easeOutElastic, easeInOutElastic,
+  easeInBounce,  easeOutBounce,  easeInOutBounce,
+  cubicBezier, spring,
 
   // Shapes
   circle, line, rect, polygon, arc, ellipse, text,
@@ -199,6 +225,12 @@ export const stdlib = {
 
   // Color
   Color,
+
+  // Intervals
+  $loop, $beat, $bars,
+  $bar1: $bars[0], $bar2: $bars[1], $bar3: $bars[2], $bar4: $bars[3],
+  $bar5: $bars[4], $bar6: $bars[5], $bar7: $bars[6], $bar8: $bars[7],
+  tween,
 
   // Helpers
   val, make3D, draw,

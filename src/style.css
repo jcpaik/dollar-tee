@@ -1,8 +1,8 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  background: #1a1a2e;
-  color: #e0e0e0;
+  background: #1a1a1a;
+  color: #b0b0b0;
   font-family: 'Menlo', 'Consolas', monospace;
   display: flex;
   flex-direction: column;
@@ -22,7 +22,7 @@ body {
   width: 50%;
   display: flex;
   flex-direction: column;
-  border-right: 2px solid #333;
+  border-right: 1px solid #3a3a3a;
 }
 
 #toolbar {
@@ -30,18 +30,18 @@ body {
   align-items: center;
   gap: 12px;
   padding: 8px 16px;
-  background: #16213e;
-  border-bottom: 1px solid #333;
+  background: #222;
+  border-bottom: 1px solid #3a3a3a;
   flex-shrink: 0;
   font-size: 13px;
 }
 
 #toolbar select {
-  background: #0f3460;
-  color: #e0e0e0;
-  border: 1px solid #555;
+  background: #333;
+  color: #b0b0b0;
+  border: 1px solid #4a4a4a;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: 3px;
   font-family: inherit;
   font-size: 13px;
   cursor: pointer;
@@ -56,17 +56,17 @@ body {
 }
 
 #toolbar input[type="checkbox"] {
-  accent-color: #e94560;
+  accent-color: #ff764d;
 }
 
 .time-display {
-  color: #e94560;
+  color: #ff764d;
   font-weight: bold;
   min-width: 90px;
 }
 
 .hint {
-  color: #666;
+  color: #555;
   margin-left: auto;
   font-size: 12px;
 }
@@ -82,7 +82,7 @@ body {
 }
 
 #error-bar {
-  background: #e94560;
+  background: #c23;
   color: white;
   padding: 6px 16px;
   font-size: 12px;
@@ -111,21 +111,27 @@ canvas {
 
 #transport {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 16px;
-  background: #16213e;
-  border-top: 2px solid #333;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 12px 8px;
+  background: #222;
+  border-top: 1px solid #3a3a3a;
   flex-shrink: 0;
   font-size: 13px;
 }
 
+#transport-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 #transport button {
-  background: #0f3460;
-  color: #e0e0e0;
-  border: 1px solid #555;
+  background: #333;
+  color: #b0b0b0;
+  border: 1px solid #4a4a4a;
   padding: 4px 10px;
-  border-radius: 4px;
+  border-radius: 3px;
   font-family: inherit;
   font-size: 14px;
   cursor: pointer;
@@ -133,38 +139,35 @@ canvas {
 }
 
 #transport button:hover {
-  background: #1a4a7a;
+  background: #444;
 }
 
 #transport button:disabled {
-  opacity: 0.35;
+  opacity: 0.3;
   cursor: default;
 }
 
 #transport button.active {
-  background: #e94560;
-  border-color: #e94560;
+  background: #ff764d;
+  border-color: #ff764d;
+  color: #fff;
 }
 
-#timeline {
-  flex: 1;
-  height: 18px;
-  background: #0a0a1a;
-  border-radius: 3px;
-  position: relative;
-  cursor: pointer;
-  overflow: hidden;
+/* ── Beat grid ───────────────────────────────────────────────── */
+
+#beat-grid {
+  width: 100%;
+  height: 48px;
 }
 
-#timeline-fill {
+#beat-grid canvas {
+  display: block;
+  width: 100%;
   height: 100%;
-  background: #e94560;
-  width: 0%;
-  pointer-events: none;
 }
 
 #audio-time {
-  color: #888;
+  color: #666;
   font-size: 12px;
   min-width: 95px;
   text-align: center;

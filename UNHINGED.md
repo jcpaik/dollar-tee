@@ -237,3 +237,186 @@ The function is meaningless as code. It exists to invoke UI.
   - Just don't worry about it if this is the main dev machine.
 - Decide later.
 
+---
+
+## Easing Library — Want It Rich
+
+Want a comprehensive easing library. Easing functions are core to making
+animations feel good — they map progress (0→1) to a shaped output.
+What do the cool animation people actually use?
+
+### Standard Curves (Robert Penner's — the industry standard)
+
+11 curves × 3 flavors (in/out/in-out) = 33 functions:
+- **Linear** — constant speed, `t`
+- **Quad** — gentle, `t²`
+- **Cubic** — the default "smooth", `t³`
+- **Quart** — snappier, `t⁴`
+- **Quint** — very snappy, `t⁵`
+- **Sine** — softest, organic, `1 - cos(t·π/2)`
+- **Expo** — dramatic, almost instant at one end, `2^(10(t-1))`
+- **Circ** — circular arc feel, `1 - √(1-t²)`
+- **Back** — overshoots then settles (slingshot)
+- **Elastic** — spring wobble (damped sine wave)
+- **Bounce** — ball-drop bounce (piecewise parabolas)
+
+### Beyond Penner
+
+- **Cubic bezier** (CSS-style) — `cubicBezier(0.25, 0.1, 0.25, 1.0)`.
+  4 control points, infinite curves. Designers hand you bezier values.
+- **Spring physics** — `spring({ stiffness, damping, mass })`.
+  Not a fixed curve, a simulation. Can overshoot/oscillate. Framer Motion style.
+- **Steps / quantized** — `steps(4)`. Discrete jumps. Retro, clock-tick feel.
+- **Composition** — reverse, mirror (ping-pong), chain, scale, sequence.
+- **Custom keyframe curves** — draw control points, interpolate. Like a DAW automation lane.
+
+### Best Practices — Pick by Intent
+
+- "Something appears" → ease-out (arrives fast, settles)
+- "Something disappears" → ease-in (starts slow, exits fast)
+- "A to B movement" → ease-in-out
+- "Impact / attention" → elastic or back
+- "Rhythmic pulse" → sine or expo
+
+### For Music / VJ Specifically
+
+- **Kick hit** → `easeOutExpo` (instant impact, fast decay) or `easeOutElastic` (wobble)
+- **Build-up** → `easeInQuad` or `easeInCubic` (slow start, rising tension)
+- **Drop** → `easeOutBounce` or hard step
+- **Slow drift** → `easeInOutSine` (organic, barely noticeable)
+- **Strobe** → `steps(1)` or `t < 0.1 ? 1 : 0`
+
+### Common Patterns
+
+```js
+// ping-pong: up then back down
+const ping = t < 0.5 ? ease(t * 2) : ease(1 - (t - 0.5) * 2);
+
+// loop-friendly breathing
+const breathe = sin(t * TAU);
+
+// stagger: offset same easing for N elements
+for (let i = 0; i < n; i++) {
+  const staggered = ease(clamp(t * n - i, 0, 1));
+}
+```
+
+### The 80/20
+
+Pros use cubic bezier or spring 80% of the time. Penner for the other 20%.
+Custom keyframe curves are rare.
+
+### Open Question
+
+Pure easing goes 0→1 in, 0→1 out. But in practice you always need to convert
+from interval time to progress, and from eased progress to actual values.
+That's boilerplate every time. Need a good convenience API on top of pure easings.
+See IDEAS for the two approaches we like.
+
+---
+
+## Examples Are Too Imperative
+
+- The existing demo sketches use imperative Canvas style (ctx.fillRect, ctx.beginPath, etc.)
+- They work, but they don't showcase the declarative mode we're building
+- Need to rewrite/add examples that use the declarative style (return arrays of shapes + directives)
+- This is also a test of whether the declarative API is actually pleasant to use
+
+---
+
+## Coordinate System — Pixel vs Mathematical
+
+- Canvas default: pixel coordinates. Origin top-left, Y goes down. Gross for math.
+- Want: **mathematical coordinates**. Origin at center (or wherever), Y goes up, units are abstract (not pixels).
+- The term is **viewport** or **coordinate transform** — mapping from "math space" to pixel space.
+- Mathematica does this: `PlotRange -> {{-1, 1}, {-1, 1}}` and it maps to whatever pixel size the window is.
+- Want something like: "my world is -1 to 1 in both axes" and shapes just go there, regardless of canvas pixel size.
+- Canvas can do this with `ctx.setTransform()` under the hood — flip Y, scale, translate origin.
+- But the declarative renderer should handle this automatically. User thinks in math coords, renderer maps to pixels.
+
+---
+
+## `render()` Instead of `return`
+
+- Currently: user code has one `return [...]` at the end. Don't like it.
+- Problem: forces everything into one big expression. Can't build up scenes across multiple lines naturally.
+- Want: **`render()`** — call it anywhere, multiple times, at the top level.
+- Each `render()` call draws its contents. Multiple calls = multiple draw groups. No single return needed.
+
+```js
+// instead of this:
+return [
+  bg('#111'),
+  fill('red'), circle(0, 0, 50),
+  fill('blue'), rect(100, 100, 30, 30),
+]
+
+// this:
+render(bg('#111'))
+
+render(
+  fill('red'),
+  circle(0, 0, 50),
+)
+
+render(
+  fill('blue'),
+  rect(100, 100, 30, 30),
+)
+```
+
+```js
+// real example — build up a scene with logic in between
+render(bg('#111'))
+
+const n = 12
+const r = 200
+for (let i = 0; i < n; i++) {
+  const angle = (i / n) * TAU + t
+  const x = W/2 + r * cos(angle)
+  const y = H/2 + r * sin(angle)
+  render(
+    fill(Color.hsl(i * 30 + t * 50, 70, 50)),
+    circle(x, y, 20),
+  )
+}
+
+render(
+  fill('white'),
+  text(W/2, H/2, 'hello'),
+)
+```
+
+- Each `render()` is its own scope (directives don't leak between calls)
+- Feels like Mathematica's `Show[]` — combine multiple `Graphics[]` objects
+- No return value needed from user code at all
+
+### `table()` — Mathematica-style iteration inside `render()`
+
+Want to avoid for loops inside render. Mathematica's `Table[expr, {i, n}, {j, m}]` is beautiful because `{i, n}` keeps the iterator and its range together. JS separates them. Annoying.
+
+**Winner: Option B with syntactic sugar.** (Options A–H explored and rejected — see git history.)
+
+Best pure-JS version (slight repetition):
+```js
+table({i: 8, j: 8}, ({i, j}) => [
+  circle(i * 50, j * 50, 20),
+])
+```
+
+Zero-repetition version (needs compiler/preprocessor sugar):
+```js
+table({i: 8, j: 8}, _ => [
+  circle(i * 50, j * 50, 20),
+])
+```
+The `_` signals "auto-destructure from the object keys." Preprocessor rewrites it.
+
+**Range syntax for the object:**
+- `{i: 8}` — i from 1 to 8
+- `{i: [3, 10]}` — i from 3 to 10
+- `{i: [3, 10, 2]}` — i from 3 to 10, step 2
+- `{i: {from: 3, to: 10, step: 2}}` — same, fully spelled out
+
+**Zero repetition requires syntactic sugar** — a preprocessor step that sees the `_` placeholder and auto-injects the object keys as variables. Not a big lift since user code already goes through `new Function()` compilation.
+

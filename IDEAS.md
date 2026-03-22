@@ -121,20 +121,116 @@ floating widgets anchored to source positions.
 
 ---
 
-## 6. Stdlib Extensions
+## 6. Declarative Rendering — `render()` + `table()`
+
+### `render()` replaces `return`
+
+Currently user code has one `return [...]` at the end. This forces everything
+into one big expression. `render()` can be called anywhere, multiple times.
+Each call is its own scope (directives don't leak between calls).
+
+```js
+render(bg('#111'))
+
+render(
+  fill('red'),
+  circle(0, 0, 50),
+)
+
+// logic between render calls — natural
+const n = 12
+for (let i = 0; i < n; i++) {
+  const angle = (i / n) * TAU + t
+  render(
+    fill(Color.hsl(i * 30 + t * 50, 70, 50)),
+    circle(cos(angle) * 200, sin(angle) * 200, 20),
+  )
+}
+
+render(fill('white'), text(W/2, H/2, 'hello'))
+```
+
+Nested arrays inside `render()` act as **style scopes** (Mathematica `Graphics[]` style):
+```js
+render(
+  fill('red'), circle(0, 0, 50),
+  [fill('green'), lineWidth(3),    // scope starts
+    line(0, 0, 5, 5),
+    circle(2, 2, 1),
+  ],                                // scope ends
+  line(0, 0, 1, 1),                 // no longer green or thick
+)
+```
+
+### `table()` — Mathematica-style iteration
+
+Avoids imperative for-loops inside render. Object binding keeps iterator name
+and range together:
+
+```js
+render(
+  table({i: 8, j: 8}, ({i, j}) => [
+    fill(Color.hsl((i + j) * 20, 70, 50)),
+    circle(i * 50, j * 50, 20),
+  ])
+)
+```
+
+**Range syntax:**
+- `{i: 8}` — i from 1 to 8
+- `{i: [3, 10]}` — i from 3 to 10
+- `{i: [3, 10, 2]}` — i from 3 to 10, step 2
+- `{i: {from: 3, to: 10, step: 2}}` — fully spelled out
+
+**Future: zero-repetition sugar.** With a preprocessor step, `_ =>` could
+auto-destructure the object keys, eliminating the `({i, j})` repetition:
+```js
+table({i: 8, j: 8}, _ => [
+  circle(i * 50, j * 50, 20),
+])
+```
+Feasible since user code already goes through `new Function()` compilation.
+
+---
+
+## 7. Stdlib Extensions
+
+### Easing Library
+
+Ship all 33 standard Penner easings (11 curves × 3 flavors: in/out/in-out),
+plus cubic bezier and spring physics.
+
+Pure easing functions always available: `easeOutCubic(t)` takes 0→1, returns 0→1.
+
+**Convenience APIs** to avoid boilerplate when using with intervals:
+
+**`$kick.ease()` — easing on the interval object:**
+```js
+$kick.ease("outCubic")                // → 0→1 eased progress
+$kick.ease("outCubic", 50, 250)       // → mapped to value range 50→250
+```
+
+**`tween()` — all-in-one function:**
+```js
+tween($kick, 50, 250, easeOutCubic)   // → value between 50 and 250
+tween($kick, 50, 250)                 // → linear by default
+```
+
+Both keep pure easing functions underneath for when you want raw math.
+
+### Other Stdlib
 
 - Better shape grammar — chainable? `circle(x,y,r).fill('#f00').stroke('#fff',2)`?
 - Proper colormaps (Viridis, Inferno, Plasma — LUT-based, not approximations)
 - Perlin/Simplex noise (proper implementation)
 - Transform stack: `translate(x,y)`, `rotate(a)`, `scale(s)` as scene directives
 - `grid(nx, ny, fn)` and `repeat(n, fn)` helpers
-- Tween/animation/keyframe helpers
 - 3D projection helpers (iso, perspective) as stdlib
 - WebGL/shader mode (optional second renderer)
 
 ---
 
-## 7. UI/UX
+## 8. UI/UX
 
 - Play/pause/reset time controls
 - FPS counter
@@ -150,7 +246,7 @@ floating widgets anchored to source positions.
 
 ---
 
-## 8. Advanced Hot-Reload
+## 9. Advanced Hot-Reload
 
 - Stateful hot-reload — preserve user state across code swaps.
   User declares state with `state({key: defaultValue})`, host persists it.
@@ -160,7 +256,7 @@ floating widgets anchored to source positions.
 
 ---
 
-## 9. CC Agent Skills
+## 10. CC Agent Skills
 
 - Build custom Claude Code skills for this project's workflow:
   - `/dump` — append raw idea to UNHINGED.md

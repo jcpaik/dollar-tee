@@ -3,14 +3,32 @@
 
 export const DEMOS = {
 
+  "Blank Canvas": `\
+// Your blank canvas — go wild!
+// Available: ctx, t (seconds), W, H (canvas size)
+// Shapes:  circle(x,y,r)  rect(x,y,w,h)  line(x1,y1,x2,y2)  polygon(pts)
+// Style:   fill(color)  stroke(color)  lineWidth(w)  bg(color)  noFill()  noStroke()
+// Color:   Color.hsl(h,s,l)  Color.rgb(r,g,b)  Color.hex('#fff')  Color.auto(i)
+// Math:    lerp  ease  map  clamp  noise  noise2  sin cos abs ...
+// Easing:  easeInQuad  easeOutCubic  easeInOutElastic  easeOutBounce  ...
+//          cubicBezier(x1,y1,x2,y2)  spring(stiffness, damping)
+// Beats:   $beat  $loop  $bar1–$bar8  $bars[i]  tween($bar1, 0, 100, "outCubic")
+//          $bar1.ease("outCubic")  $bar1.ease("outCubic", 50, 250)
+// Modes:   return [...] for declarative, or use ctx directly for imperative
+
+return [
+  bg('#0a0a1a'),
+];
+`,
+
   "Pulsing Circles": `\
-// Concentric circles with easing — declarative mode
+// Concentric circles pulsing to the beat — declarative mode
 const n = 12;
 const shapes = [bg('#0a0a1a')];
 
 for (let i = n; i >= 0; i--) {
-  const phase = t * 0.8 + i * 0.3;
-  const pulse = ease(abs(sin(phase)));
+  const bar = $bars[i % 8];
+  const pulse = bar.active ? bar.ease("outCubic") : 0;
   const r = lerp(20, min(W, H) * 0.45, i / n) * (0.7 + 0.3 * pulse);
   shapes.push(
     fill(Color.hsl(t * 30 + i * 25, 70, 40 + pulse * 20)),
@@ -18,6 +36,92 @@ for (let i = n; i >= 0; i--) {
   );
 }
 return shapes;
+`,
+
+  "Easing Gallery": `\
+// All easing curves visualized
+const easings = [
+  ['InSine', easeInSine],       ['OutSine', easeOutSine],       ['InOutSine', easeInOutSine],
+  ['InCubic', easeInCubic],     ['OutCubic', easeOutCubic],     ['InOutCubic', easeInOutCubic],
+  ['InExpo', easeInExpo],       ['OutExpo', easeOutExpo],       ['InOutExpo', easeInOutExpo],
+  ['InBack', easeInBack],       ['OutBack', easeOutBack],       ['InOutBack', easeInOutBack],
+  ['InElastic', easeInElastic], ['OutElastic', easeOutElastic], ['InOutElastic', easeInOutElastic],
+  ['InBounce', easeInBounce],   ['OutBounce', easeOutBounce],   ['InOutBounce', easeInOutBounce],
+];
+const cols = 3, rows = 6;
+const padX = 60, padY = 40;
+const cellW = (W - padX * 2) / cols;
+const cellH = (H - padY * 2) / rows;
+const scene = [bg('#0a0a1a')];
+
+const progress = $beat.progress;
+
+for (let idx = 0; idx < easings.length; idx++) {
+  const [name, fn] = easings[idx];
+  const col = idx % cols, row = floor(idx / cols);
+  const ox = padX + col * cellW, oy = padY + row * cellH;
+  const gw = cellW * 0.7, gh = cellH * 0.55;
+
+  // Label
+  scene.push(
+    fill('#666'), font('11px monospace'),
+    text(name, ox + 4, oy + 14)
+  );
+
+  // Axes
+  scene.push(
+    stroke('#333'), lineWidth(1), noFill(),
+    line(ox, oy + gh + 20, ox + gw, oy + gh + 20),
+    line(ox, oy + 20, ox, oy + gh + 20)
+  );
+
+  // Curve
+  scene.push(stroke(Color.hsl(idx * 20, 70, 55)), lineWidth(1.5));
+  const steps = 40;
+  for (let i = 0; i < steps; i++) {
+    const x0 = ox + (i / steps) * gw;
+    const x1 = ox + ((i + 1) / steps) * gw;
+    const y0 = oy + gh + 20 - fn(i / steps) * gh;
+    const y1 = oy + gh + 20 - fn((i + 1) / steps) * gh;
+    scene.push(line(x0, y0, x1, y1));
+  }
+
+  // Moving dot
+  const dotX = ox + progress * gw;
+  const dotY = oy + gh + 20 - fn(progress) * gh;
+  scene.push(fill('#fff'), noStroke(), circle(dotX, dotY, 3));
+}
+
+return scene;
+`,
+
+  "Bouncing Dots": `\
+// Bouncing dots synced to the beat — each uses a different easing
+const scene = [bg('#0a0a1a')];
+const easings = [
+  easeOutBounce, easeOutElastic, easeOutBack,
+  easeOutCubic, easeOutExpo, easeOutCirc,
+];
+const n = easings.length;
+const spacing = W / (n + 1);
+
+for (let i = 0; i < n; i++) {
+  const x = spacing * (i + 1);
+  const eased = $beat.ease(easings[i]);
+  const y = lerp(H * 0.85, H * 0.15, eased);
+  const r = 15 + eased * 10;
+
+  scene.push(
+    // Trail
+    alpha(0.3), fill(Color.hsl(i * 60, 70, 40)), noStroke(),
+    circle(x, y, r * 0.6),
+    // Main dot
+    alpha(1), fill(Color.hsl(i * 60, 70, 55)),
+    circle(x, y, r)
+  );
+}
+
+return scene;
 `,
 
   "3D Box Grid": `\
@@ -154,7 +258,8 @@ const gap = sz * 0.4;
 for (let i = 0; i < n; i++) {
   const x = W / 2 - (n * (sz + gap)) / 2 + i * (sz + gap);
   const y = H * 0.15;
-  const pulse = ease(abs(sin(t * 0.8 + i * 0.4)));
+  const bar = $bars[i % 8];
+  const pulse = bar.active ? bar.ease("outElastic") : 0;
 
   scene.push(
     fill(Color.auto(i)),
@@ -187,21 +292,5 @@ for (let i = 0; i < 60; i++) {
 }
 
 return scene;
-`,
-
-  "Blank Canvas": `\
-// Your blank canvas — go wild!
-// Available: ctx, t (seconds), W, H (canvas size)
-// Shapes:  circle(x,y,r)  rect(x,y,w,h)  line(x1,y1,x2,y2)  polygon(pts)
-// Style:   fill(color)  stroke(color)  lineWidth(w)  bg(color)  noFill()  noStroke()
-// Color:   Color.hsl(h,s,l)  Color.rgb(r,g,b)  Color.hex('#fff')  Color.auto(i)
-// Math:    lerp  ease  map  clamp  noise  noise2  sin cos abs ...
-// Modes:   return [...] for declarative, or use ctx directly for imperative
-
-return [
-  bg('#0a0a1a'),
-  fill(Color.hsl(t * 60, 70, 55)),
-  circle(W / 2, H / 2, 80 + sin(t) * 40),
-];
 `,
 };

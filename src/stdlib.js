@@ -55,6 +55,14 @@ function circle(x, y, r) { return { type: 'circle', x, y, r }; }
 function line(x1, y1, x2, y2) { return { type: 'line', x1, y1, x2, y2 }; }
 function rect(x, y, w, h) { return { type: 'rect', x, y, w, h }; }
 function polygon(pts) { return { type: 'polygon', pts }; }
+function ngon(x, y, r, n, angle = 0) {
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = angle + (i / n) * Math.PI * 2;
+    pts.push([x + Math.cos(a) * r, y + Math.sin(a) * r]);
+  }
+  return polygon(pts);
+}
 function arc(x, y, r, start, end) { return { type: 'arc', x, y, r, start, end }; }
 function ellipse(x, y, rx, ry) { return { type: 'ellipse', x, y, rx, ry }; }
 function text(str, x, y, size) { return { type: 'text', str, x, y, size: size || 16 }; }
@@ -265,7 +273,7 @@ export const stdlib = {
   cubicBezier, spring,
 
   // Shapes
-  circle, line, rect, polygon, arc, ellipse, text,
+  circle, line, rect, polygon, ngon, arc, ellipse, text,
 
   // Directives
   fill, stroke, lineWidth, noFill, noStroke, bg, font, alpha,

@@ -7,6 +7,7 @@ export const DEMOS = {
 // Your blank canvas — go wild!
 // Available: ctx, t (seconds), W, H (canvas size)
 // Shapes:  circle(x,y,r)  rect(x,y,w,h)  line(x1,y1,x2,y2)  polygon(pts)
+//          ngon(x,y,r,sides,angle)  arc(x,y,r,start,end)  ellipse(x,y,rx,ry)
 // Style:   fill(color)  stroke(color)  lineWidth(w)  bg(color)  noFill()  noStroke()
 // Color:   Color.hsl(h,s,l)  Color.rgb(r,g,b)  Color.hex('#fff')  Color.auto(i)
 // Math:    lerp  ease  map  clamp  noise  noise2  sin cos abs ...
@@ -15,7 +16,8 @@ export const DEMOS = {
 // Beats:   $beat  $loop  $bar1–$bar8  $bars[i]  tween($bar1, 0, 100, "outCubic")
 //          $bar1.ease("outCubic")  $bar1.ease("outCubic", 50, 250)
 // Render:  render(fill('red'), circle(x,y,r))  — call anywhere, multiple times
-// Table:   table({i: 8, j: 8}, ({i,j}) => [fill(...), circle(i*50, j*50, 20)])
+// Table:   table({i: 8}, ({i}) => circle(i*50, 50, 20))  — can return a single primitive
+//          table({i: 8, j: 8}, ({i,j}) => [fill(...), circle(i*50, j*50, 20)])
 
 render(bg('#0a0a1a'))
 `,
@@ -111,19 +113,26 @@ render(
 `,
 
   "Table Demo": `\
-// Declarative grid using table() — no for-loops needed
+// table() can return a single primitive — no array needed
 render(
   bg('#0a0a1a'),
+
+  // Single primitive: just return an ngon directly
+  fill('#333'), noStroke(),
+  table({i: 6}, ({i}) =>
+    ngon(W/2, H/2, min(W,H) * 0.05 * i, 3 + i, t * (0.5 + i * 0.1))
+  ),
+
+  // Or return [style, shape] arrays for per-item color
   table({i: 10, j: 10}, ({i, j}) => {
     const phase = t + i * 0.3 + j * 0.3
     const pulse = easeOutCubic(abs(sin(phase)))
     const x = W * 0.1 + (i - 1) * (W * 0.08)
     const y = H * 0.1 + (j - 1) * (H * 0.08)
-    const r = 8 + pulse * 12
     return [
       fill(Color.hsl(i * 20 + j * 20 + t * 40, 70, 40 + pulse * 25)),
       noStroke(),
-      circle(x, y, r),
+      circle(x, y, 8 + pulse * 12),
     ]
   })
 )
@@ -183,7 +192,7 @@ for (let z = 0; z < 3; z++) {
 `,
 
   "Spinning Polygons": `\
-// Spinning polygons with trails — imperative + render mix
+// Spinning polygons with trails
 ctx.fillStyle = 'rgba(10, 10, 26, 0.12)'
 ctx.fillRect(0, 0, W, H)
 
@@ -191,22 +200,18 @@ const cx = W / 2, cy = H / 2
 const sides = 5 + floor(sin(t * 0.3) * 2 + 2)
 const baseR = min(W, H) * 0.3
 
-for (let j = 0; j < 3; j++) {
-  const r = baseR * (0.5 + j * 0.25)
-  const angle = t * (0.5 + j * 0.2) * (j % 2 ? -1 : 1)
-  const pts = []
-  for (let i = 0; i < sides; i++) {
-    const a = angle + (i / sides) * TWO_PI
-    const wobble = 1 + sin(t * 2 + i + j) * 0.1
-    pts.push([cx + cos(a) * r * wobble, cy + sin(a) * r * wobble])
-  }
-  render(
-    noFill(),
-    stroke(Color.hsl(t * 50 + j * 120, 80, 55)),
-    lineWidth(2),
-    polygon(pts)
-  )
-}
+render(
+  table({j: [0, 2]}, ({j}) => {
+    const r = baseR * (0.5 + j * 0.25)
+    const angle = t * (0.5 + j * 0.2) * (j % 2 ? -1 : 1)
+    return [
+      noFill(),
+      stroke(Color.hsl(t * 50 + j * 120, 80, 55)),
+      lineWidth(2),
+      ngon(cx, cy, r, sides, angle),
+    ]
+  })
+)
 `,
 
   "Color Field": `\

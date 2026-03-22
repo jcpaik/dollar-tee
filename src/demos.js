@@ -22,18 +22,18 @@ render(bg('#0a0a1a'))
 
   "Pulsing Circles": `\
 // Concentric circles pulsing to the beat
-render(bg('#0a0a1a'))
-
-const n = 12
-for (let i = n; i >= 0; i--) {
-  const bar = $bars[i % 8]
-  const pulse = bar.active ? bar.ease("outCubic") : 0
-  const r = lerp(20, min(W, H) * 0.45, i / n) * (0.7 + 0.3 * pulse)
-  render(
-    fill(Color.hsl(t * 30 + i * 25, 70, 40 + pulse * 20)),
-    circle(W / 2, H / 2, r)
-  )
-}
+render(
+  bg('#0a0a1a'),
+  table({i: [12, 0]}, ({i}) => {
+    const bar = $bars[i % 8]
+    const pulse = bar.active ? bar.ease("outCubic") : 0
+    const r = lerp(20, min(W, H) * 0.45, i / 12) * (0.7 + 0.3 * pulse)
+    return [
+      fill(Color.hsl(t * 30 + i * 25, 70, 40 + pulse * 20)),
+      circle(W / 2, H / 2, r),
+    ]
+  })
+)
 `,
 
   "Easing Gallery": `\
@@ -50,42 +50,41 @@ const cols = 3, rows = 6
 const padX = 60, padY = 40
 const cellW = (W - padX * 2) / cols
 const cellH = (H - padY * 2) / rows
-
-render(bg('#0a0a1a'))
-
 const progress = $beat.progress
 
-for (let idx = 0; idx < easings.length; idx++) {
-  const [name, fn] = easings[idx]
-  const col = idx % cols, row = floor(idx / cols)
-  const ox = padX + col * cellW, oy = padY + row * cellH
-  const gw = cellW * 0.7, gh = cellH * 0.55
+render(
+  bg('#0a0a1a'),
+  table({idx: [0, easings.length - 1]}, ({idx}) => {
+    const [name, fn] = easings[idx]
+    const col = idx % cols, row = floor(idx / cols)
+    const ox = padX + col * cellW, oy = padY + row * cellH
+    const gw = cellW * 0.7, gh = cellH * 0.55
+    const dotX = ox + progress * gw
+    const dotY = oy + gh + 20 - fn(progress) * gh
 
-  // Label
-  render(fill('#666'), font('11px monospace'), text(name, ox + 4, oy + 14))
+    return [
+      // Label
+      fill('#666'), font('11px monospace'), text(name, ox + 4, oy + 14),
 
-  // Axes
-  render(
-    stroke('#333'), lineWidth(1), noFill(),
-    line(ox, oy + gh + 20, ox + gw, oy + gh + 20),
-    line(ox, oy + 20, ox, oy + gh + 20)
-  )
+      // Axes
+      [stroke('#333'), lineWidth(1), noFill(),
+        line(ox, oy + gh + 20, ox + gw, oy + gh + 20),
+        line(ox, oy + 20, ox, oy + gh + 20)],
 
-  // Curve
-  const steps = 40
-  for (let i = 0; i < steps; i++) {
-    const x0 = ox + (i / steps) * gw
-    const x1 = ox + ((i + 1) / steps) * gw
-    const y0 = oy + gh + 20 - fn(i / steps) * gh
-    const y1 = oy + gh + 20 - fn((i + 1) / steps) * gh
-    render(stroke(Color.hsl(idx * 20, 70, 55)), lineWidth(1.5), line(x0, y0, x1, y1))
-  }
+      // Curve
+      ...table({i: [0, 39]}, ({i}) => {
+        const x0 = ox + (i / 40) * gw
+        const x1 = ox + ((i + 1) / 40) * gw
+        const y0 = oy + gh + 20 - fn(i / 40) * gh
+        const y1 = oy + gh + 20 - fn((i + 1) / 40) * gh
+        return [stroke(Color.hsl(idx * 20, 70, 55)), lineWidth(1.5), line(x0, y0, x1, y1)]
+      }),
 
-  // Moving dot
-  const dotX = ox + progress * gw
-  const dotY = oy + gh + 20 - fn(progress) * gh
-  render(fill('#fff'), noStroke(), circle(dotX, dotY, 3))
-}
+      // Moving dot
+      fill('#fff'), noStroke(), circle(dotX, dotY, 3),
+    ]
+  })
+)
 `,
 
   "Bouncing Dots": `\
@@ -94,33 +93,27 @@ const easings = [
   easeOutBounce, easeOutElastic, easeOutBack,
   easeOutCubic, easeOutExpo, easeOutCirc,
 ]
-const n = easings.length
-const spacing = W / (n + 1)
+const spacing = W / (easings.length + 1)
 
-render(bg('#0a0a1a'))
-
-for (let i = 0; i < n; i++) {
-  const x = spacing * (i + 1)
-  const eased = $beat.ease(easings[i])
-  const y = lerp(H * 0.85, H * 0.15, eased)
-  const r = 15 + eased * 10
-
-  render(
-    alpha(0.3), fill(Color.hsl(i * 60, 70, 40)), noStroke(),
-    circle(x, y, r * 0.6)
-  )
-  render(
-    alpha(1), fill(Color.hsl(i * 60, 70, 55)),
-    circle(x, y, r)
-  )
-}
+render(
+  bg('#0a0a1a'),
+  table({i: [0, easings.length - 1]}, ({i}) => {
+    const x = spacing * (i + 1)
+    const eased = $beat.ease(easings[i])
+    const y = lerp(H * 0.85, H * 0.15, eased)
+    const r = 15 + eased * 10
+    return [
+      [alpha(0.3), fill(Color.hsl(i * 60, 70, 40)), noStroke(), circle(x, y, r * 0.6)],
+      [alpha(1), fill(Color.hsl(i * 60, 70, 55)), circle(x, y, r)],
+    ]
+  })
+)
 `,
 
   "Table Demo": `\
 // Declarative grid using table() — no for-loops needed
-render(bg('#0a0a1a'))
-
 render(
+  bg('#0a0a1a'),
   table({i: 10, j: 10}, ({i, j}) => {
     const phase = t + i * 0.3 + j * 0.3
     const pulse = easeOutCubic(abs(sin(phase)))
@@ -234,67 +227,92 @@ render(
 
   "Line Wave": `\
 // Flowing sine wave lines
-render(bg('#0a0a1a'))
-
-for (let j = 0; j < 40; j++) {
-  const y0 = (j / 40) * H
-  for (let i = 0; i < 80; i++) {
+render(
+  bg('#0a0a1a'),
+  table({j: [0, 39], i: [0, 79]}, ({j, i}) => {
+    const y0 = (j / 40) * H
     const x = (i / 80) * W
     const phase = i * 0.15 + j * 0.1 + t
     const amp = sin(t * 0.5 + j * 0.2) * 30 + 20
     const y = y0 + sin(phase) * amp
     const xNext = ((i + 1) / 80) * W
     const yNext = y0 + sin(phase + 0.15) * amp
-    render(
+    return [
       stroke(Color.hsl(j * 8 + t * 30, 70, 50)),
       lineWidth(1.5), noFill(),
-      line(x, y, xNext, yNext)
-    )
-  }
-}
+      line(x, y, xNext, yNext),
+    ]
+  })
+)
+`,
+
+  "Bouncing Beats": `\
+// Bouncing circles on different intervals, colored by scheme
+const easings = [
+  easeOutBounce, easeOutElastic, easeOutBack,
+  easeOutCubic, easeOutExpo, easeOutCirc,
+  easeOutQuad, easeOutBounce,
+]
+const spacing = W / 9
+
+render(
+  bg('#0a0a1a'),
+  table({i: [0, 7]}, ({i}) => {
+    const bar = $bars[i]
+    const x = spacing * (i + 1)
+    const eased = bar.active ? bar.ease(easings[i]) : 0
+    const y = lerp(H * 0.82, H * 0.18, eased)
+    const r = 12 + eased * 18
+    const c = Color.viridis(i / 8)
+    return [
+      [alpha(0.2 + eased * 0.15), fill(c), noStroke(), circle(x, H * 0.82, r * 0.5)],
+      [alpha(0.6 + eased * 0.4), fill(c), noStroke(), circle(x, y, r)],
+    ]
+  }),
+  stroke('#333'), lineWidth(1), noFill(),
+  line(spacing * 0.5, H * 0.85, W - spacing * 0.5, H * 0.85),
+)
 `,
 
   "Palette Demo": `\
 // Mathematica ColorData[97] palette + Color class
-render(bg('#0a0a1a'))
-
 const n = Color.palette.length
 const sz = min(W, H) * 0.06
 const gap = sz * 0.4
-
-// Palette swatches
-for (let i = 0; i < n; i++) {
-  const x = W / 2 - (n * (sz + gap)) / 2 + i * (sz + gap)
-  const y = H * 0.15
-  const bar = $bars[i % 8]
-  const pulse = bar.active ? bar.ease("outElastic") : 0
-  render(
-    fill(Color.auto(i)), noStroke(),
-    circle(x + sz/2, y, sz/2 * (0.8 + 0.4 * pulse))
-  )
-}
-
-// Color mixing demo
 const cx = W / 2, cy = H * 0.5
 const a = Color.auto(0)
 const b = Color.auto(3)
-for (let i = 0; i <= 10; i++) {
-  const frac = i / 10
-  const mixed = a.mix(b, frac)
-  const x = cx - 200 + i * 40
-  render(fill(mixed), noStroke(), rect(x, cy, 35, 35))
-}
-
-// Rainbow ring
 const ringR = min(W, H) * 0.25
 const ringY = H * 0.78
-for (let i = 0; i < 60; i++) {
-  const angle = (i / 60) * TWO_PI + t * 0.5
-  const c = Color.rainbow(i / 60)
-  render(
-    fill(c), noStroke(),
-    circle(cx + cos(angle) * ringR, ringY + sin(angle) * ringR * 0.4, 8)
-  )
-}
+
+render(
+  bg('#0a0a1a'),
+
+  // Palette swatches
+  table({i: [0, n - 1]}, ({i}) => {
+    const x = W / 2 - (n * (sz + gap)) / 2 + i * (sz + gap)
+    const bar = $bars[i % 8]
+    const pulse = bar.active ? bar.ease("outElastic") : 0
+    return [
+      fill(Color.auto(i)), noStroke(),
+      circle(x + sz/2, H * 0.15, sz/2 * (0.8 + 0.4 * pulse)),
+    ]
+  }),
+
+  // Color mixing demo
+  table({i: [0, 10]}, ({i}) => {
+    const mixed = a.mix(b, i / 10)
+    return [fill(mixed), noStroke(), rect(cx - 200 + i * 40, cy, 35, 35)]
+  }),
+
+  // Rainbow ring
+  table({i: [0, 59]}, ({i}) => {
+    const angle = (i / 60) * TWO_PI + t * 0.5
+    return [
+      fill(Color.rainbow(i / 60)), noStroke(),
+      circle(cx + cos(angle) * ringR, ringY + sin(angle) * ringR * 0.4, 8),
+    ]
+  }),
+)
 `,
 };

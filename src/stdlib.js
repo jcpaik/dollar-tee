@@ -92,8 +92,15 @@ function val(current, _min = 0, _max = 1) { return current; }
 
 function parseRange(r) {
   if (typeof r === 'number') return [1, r, 1];
-  if (Array.isArray(r)) return [r[0], r[1], r[2] || 1];
-  if (typeof r === 'object' && r !== null) return [r.from, r.to, r.step || 1];
+  if (Array.isArray(r)) {
+    const [a, b, s] = r;
+    const step = s || (a <= b ? 1 : -1);
+    return [a, b, step];
+  }
+  if (typeof r === 'object' && r !== null) {
+    const step = r.step || (r.from <= r.to ? 1 : -1);
+    return [r.from, r.to, step];
+  }
   return [1, 1, 1];
 }
 
@@ -111,7 +118,8 @@ function table(spec, fn) {
     }
     const key = keys[depth];
     const [from, to, step] = ranges[depth];
-    for (let v = from; v <= to; v += step) {
+    const cmp = step > 0 ? (v) => v <= to : (v) => v >= to;
+    for (let v = from; cmp(v); v += step) {
       obj[key] = v;
       recurse(depth + 1, obj);
     }

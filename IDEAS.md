@@ -230,7 +230,21 @@ Both keep pure easing functions underneath for when you want raw math.
 
 ---
 
-## 8. UI/UX
+## 8. Audio Transport — Load, Play, Loop, Cue
+
+A transport bar at the bottom of the screen. Load an audio file, play/pause,
+scrub a timeline, set a cue (start) point, loop the track back to the cue
+point. Engine `$t` syncs to audio playback position.
+
+**Scope**: No code bindings, no multiple time variables, no beat detection,
+no waveform display. Just audio playback + transport.
+
+**How to verify**: Load an mp3, hit play, see the playhead move, set a cue
+point mid-track, hear it loop back to cue. Visual `$t` matches audio time.
+
+---
+
+## 9. UI/UX
 
 - Play/pause/reset time controls
 - FPS counter
@@ -246,7 +260,7 @@ Both keep pure easing functions underneath for when you want raw math.
 
 ---
 
-## 9. Advanced Hot-Reload
+## 10. Advanced Hot-Reload
 
 - Stateful hot-reload — preserve user state across code swaps.
   User declares state with `state({key: defaultValue})`, host persists it.
@@ -256,13 +270,13 @@ Both keep pure easing functions underneath for when you want raw math.
 
 ---
 
-## 10. CC Agent Skills
+## 11. CC Agent Skills
 
 - Build custom Claude Code skills for this project's workflow:
   - `/dump` — append raw idea to UNHINGED.md
   - `/sort` — promote an UNHINGED idea to IDEAS.md
-  - `/plan` — generate PLAN.md from NEXT_MOVES.md
-  - `/next` — pick items from IDEAS into NEXT_MOVES
+  - `/plan` — generate PLAN.md from TODO.md
+  - `/next` — pick items from IDEAS into TODO
 - Skill definitions live in the project, not global config.
 
 ---

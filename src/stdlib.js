@@ -82,6 +82,45 @@ function alpha(a)       { return { _dir: true, prop: 'globalAlpha', value: a }; 
 
 function val(current, _min = 0, _max = 1) { return current; }
 
+// ── table() — Mathematica-style declarative iteration ────────────
+// table({i: 8, j: 8}, ({i, j}) => [...items])
+// Range syntax:
+//   {i: 8}             → i from 1 to 8
+//   {i: [3, 10]}       → i from 3 to 10
+//   {i: [3, 10, 2]}    → i from 3 to 10, step 2
+//   {i: {from: 3, to: 10, step: 2}}
+
+function parseRange(r) {
+  if (typeof r === 'number') return [1, r, 1];
+  if (Array.isArray(r)) return [r[0], r[1], r[2] || 1];
+  if (typeof r === 'object' && r !== null) return [r.from, r.to, r.step || 1];
+  return [1, 1, 1];
+}
+
+function table(spec, fn) {
+  const keys = Object.keys(spec);
+  const ranges = keys.map(k => parseRange(spec[k]));
+  const items = [];
+
+  function recurse(depth, obj) {
+    if (depth === keys.length) {
+      const result = fn(obj);
+      if (Array.isArray(result)) items.push(...result);
+      else if (result != null) items.push(result);
+      return;
+    }
+    const key = keys[depth];
+    const [from, to, step] = ranges[depth];
+    for (let v = from; v <= to; v += step) {
+      obj[key] = v;
+      recurse(depth + 1, obj);
+    }
+  }
+
+  recurse(0, {});
+  return items;
+}
+
 // ── 3D Array Helpers ─────────────────────────────────────────────
 
 function make3D(nx, ny, nz, fillFn) {
@@ -233,7 +272,7 @@ export const stdlib = {
   tween,
 
   // Helpers
-  val, make3D, draw,
+  val, make3D, draw, table,
 
   // Math builtins
   PI: Math.PI, TWO_PI: Math.PI * 2, HALF_PI: Math.PI / 2,

@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Live Canvas Playground</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #1a1a2e;
+  color: #e0e0e0;
+  font-family: 'Menlo', 'Consolas', monospace;
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#editor-pane {
+  width: 50%;
+  display: flex;
+  flex-direction: column;
+  border-right: 2px solid #333;
+}
+
+#toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: #16213e;
+  border-bottom: 1px solid #333;
+  flex-shrink: 0;
+}
+
+#toolbar select {
+  background: #0f3460;
+  color: #e0e0e0;
+  border: 1px solid #555;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+#toolbar .info {
+  font-size: 12px;
+  color: #888;
+  margin-left: auto;
+}
+
+#toolbar .time-display {
+  font-size: 13px;
+  color: #e94560;
+  font-weight: bold;
+  min-width: 80px;
+}
+
+#code {
+  flex: 1;
+  background: #0a0a1a;
+  color: #c8d6e5;
+  font-family: 'Menlo', 'Consolas', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 16px;
+  border: none;
+  outline: none;
+  resize: none;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+}
+
+#code:focus {
+  background: #0d0d1f;
+}
+
+#error-bar {
+  background: #e94560;
+  color: white;
+  padding: 6px 16px;
+  font-size: 12px;
+  display: none;
+  flex-shrink: 0;
+  max-height: 60px;
+  overflow: auto;
+}
+
+#canvas-pane {
+  width: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #111;
+}
+
+canvas {
+  display: block;
+}
+</style>
+</head>
+<body>
+
+<div id="editor-pane">
+  <div id="toolbar">
+    <select id="demos"></select>
+    <span class="time-display" id="time-display">t = 0.00</span>
+    <span class="info">Ctrl-S to run</span>
+  </div>
+  <textarea id="code" spellcheck="false"></textarea>
+  <div id="error-bar" id="error"></div>
+</div>
+
+<div id="canvas-pane">
+  <canvas id="canvas"></canvas>
+</div>
+
+<script>
+// ── Standard Library ──────────────────────────────────────────────
+
+const lib = {
+  // Drawing
+  clear(ctx, color = '#111') {
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.restore();
+  },
+
+  line(ctx, x1, y1, x2, y2) {
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  },
+
+  circle(ctx, x, y, r) {
+    ctx.beginPath();
+    ctx.arc(x, y, Math.max(0, r), 0, Math.PI * 2);
+  },
+
+  rect(ctx, x, y, w, h) {
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+  },
+
+  polygon(ctx, points) {
+    if (points.length < 2) return;
+    ctx.beginPath();
+    ctx.moveTo(points[0][0], points[0][1]);
+    for (let i = 1; i < points.length; i++) {
+      ctx.lineTo(points[i][0], points[i][1]);
+    }
+    ctx.closePath();
+  },
+
+  // Color helpers
+  hsl(h, s, l) { return `hsl(${h}, ${s}%, ${l}%)`; },
+  hsla(h, s, l, a) { return `hsla(${h}, ${s}%, ${l}%, ${a})`; },
+  rgb(r, g, b) { return `rgb(${r}, ${g}, ${b})`; },
+  rgba(r, g, b, a) { return `rgba(${r}, ${g}, ${b}, ${a})`; },
+
+  // Math helpers
+  lerp(a, b, t) { return a + (b - a) * t; },
+  clamp(x, lo, hi) { return Math.max(lo, Math.min(hi, x)); },
+  map(v, inMin, inMax, outMin, outMax) {
+    return outMin + (outMax - outMin) * ((v - inMin) / (inMax - inMin));
+  },
+
+  // Easing
+  ease(t) { return t * t * (3 - 2 * t); },          // smoothstep
+  easeIn(t) { return t * t; },
+  easeOut(t) { return t * (2 - t); },
+  easeInOut(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; },
+
+  // Noise (simple value noise — not Perlin, but usable)
+  _seed: 0,
+  _hash(n) { let s = Math.sin(n) * 43758.5453123; return s - Math.floor(s); },
+  noise(x) { const i = Math.floor(x); const f = x - i; return lib.lerp(lib._hash(i), lib._hash(i+1), f*f*(3-2*f)); },
+  noise2(x, y) {
+    const i = Math.floor(x), j = Math.floor(y);
+    const fx = x - i, fy = y - j;
+    const sx = fx*fx*(3-2*fx), sy = fy*fy*(3-2*fy);
+    const n = i + j * 57;
+    return lib.lerp(
+      lib.lerp(lib._hash(n), lib._hash(n+1), sx),
+      lib.lerp(lib._hash(n+57), lib._hash(n+58), sx), sy
+    );
+  },
+
+  // 3D array helper
+  make3D(nx, ny, nz, fillFn) {
+    const arr = [];
+    for (let x = 0; x < nx; x++) {
+      arr[x] = [];
+      for (let y = 0; y < ny; y++) {
+        arr[x][y] = [];
+        for (let z = 0; z < nz; z++) {
+          arr[x][y][z] = fillFn ? fillFn(x, y, z) : 0;
+        }
+      }
+    }
+    return arr;
+  },
+
+  // Render a 3D array as isometric boxes
+  drawBoxes(ctx, arr, ox, oy, cellSize, colorFn) {
+    const nx = arr.length, ny = arr[0].length, nz = arr[0][0].length;
+    const cs = cellSize;
+    // Isometric projection helpers
+    const isoX = (x, y) => (x - y) * cs * 0.866;
+    const isoY = (x, y, z) => (x + y) * cs * 0.5 - z * cs;
+
+    for (let z = 0; z < nz; z++) {
+      for (let y = ny - 1; y >= 0; y--) {
+        for (let x = 0; x < nx; x++) {
+          const val = arr[x][y][z];
+          if (!val) continue;
+          const sx = ox + isoX(x, y);
+          const sy = oy + isoY(x, y, z);
+          const c = colorFn ? colorFn(x, y, z, val) : lib.hsl(val * 360, 70, 50);
+
+          // Top face
+          ctx.fillStyle = c;
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(sx + cs * 0.866, sy + cs * 0.5);
+          ctx.lineTo(sx, sy + cs);
+          ctx.lineTo(sx - cs * 0.866, sy + cs * 0.5);
+          ctx.closePath();
+          ctx.fill();
+
+          // Left face
+          ctx.fillStyle = lib.hsla(0, 0, 0, 0.2);
+          ctx.beginPath();
+          ctx.moveTo(sx - cs * 0.866, sy + cs * 0.5);
+          ctx.lineTo(sx, sy + cs);
+          ctx.lineTo(sx, sy + cs + cs);
+          ctx.lineTo(sx - cs * 0.866, sy + cs * 0.5 + cs);
+          ctx.closePath();
+          ctx.fill();
+
+          // Right face
+          ctx.fillStyle = lib.hsla(0, 0, 0, 0.35);
+          ctx.beginPath();
+          ctx.moveTo(sx + cs * 0.866, sy + cs * 0.5);
+          ctx.lineTo(sx, sy + cs);
+          ctx.lineTo(sx, sy + cs + cs);
+          ctx.lineTo(sx + cs * 0.866, sy + cs * 0.5 + cs);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+    }
+  },
+
+  PI: Math.PI,
+  TWO_PI: Math.PI * 2,
+  sin: Math.sin,
+  cos: Math.cos,
+  abs: Math.abs,
+  sqrt: Math.sqrt,
+  pow: Math.pow,
+  floor: Math.floor,
+  ceil: Math.ceil,
+  round: Math.round,
+  min: Math.min,
+  max: Math.max,
+  random: Math.random,
+  atan2: Math.atan2,
+};
+
+// ── Demo Sketches ─────────────────────────────────────────────────
+
+const DEMOS = {
+  "Pulsing Circles": `// Pulsing concentric circles
+const { clear, circle, hsl, ease, lerp, sin, abs } = lib;
+clear(ctx, '#0a0a1a');
+
+const cx = W / 2, cy = H / 2;
+const n = 12;
+
+for (let i = n; i >= 0; i--) {
+  const phase = t * 0.8 + i * 0.3;
+  const pulse = ease(abs(sin(phase)) );
+  const r = lerp(20, Math.min(W, H) * 0.45, i / n) * (0.7 + 0.3 * pulse);
+
+  ctx.fillStyle = hsl(t * 30 + i * 25, 70, 40 + pulse * 20);
+  circle(ctx, cx, cy, r);
+  ctx.fill();
+}`,
+
+  "3D Box Grid": `// Animated 3D isometric box grid
+const { clear, make3D, drawBoxes, sin, hsl } = lib;
+clear(ctx, '#0a0a1a');
+
+const N = 6;
+const grid = make3D(N, N, 3, (x, y, z) => {
+  const wave = sin(t + x * 0.5 + y * 0.5 + z) * 0.5 + 0.5;
+  return wave > 0.3 ? wave : 0;
+});
+
+drawBoxes(ctx, grid, W / 2, H * 0.3, 28,
+  (x, y, z, val) => hsl(t * 40 + x * 30 + z * 60, 70, 35 + val * 30)
+);`,
+
+  "Rotating Polygon": `// Spinning polygon with trails
+const { clear, polygon, hsl, sin, cos, PI } = lib;
+
+// Semi-transparent clear for trails
+ctx.fillStyle = 'rgba(10, 10, 26, 0.15)';
+ctx.fillRect(0, 0, W, H);
+
+const cx = W / 2, cy = H / 2;
+const sides = 5 + Math.floor(sin(t * 0.3) * 2 + 2);
+const baseR = Math.min(W, H) * 0.3;
+
+for (let j = 0; j < 3; j++) {
+  const r = baseR * (0.5 + j * 0.25);
+  const angle = t * (0.5 + j * 0.2) * (j % 2 ? -1 : 1);
+  const pts = [];
+
+  for (let i = 0; i < sides; i++) {
+    const a = angle + (i / sides) * PI * 2;
+    const wobble = 1 + sin(t * 2 + i + j) * 0.1;
+    pts.push([cx + cos(a) * r * wobble, cy + sin(a) * r * wobble]);
+  }
+
+  ctx.strokeStyle = hsl(t * 50 + j * 120, 80, 55);
+  ctx.lineWidth = 2;
+  polygon(ctx, pts);
+  ctx.stroke();
+}`,
+
+  "Color Field": `// Animated color field (pixel-ish)
+const { hsl, noise2, sin } = lib;
+const step = 12;
+
+for (let x = 0; x < W; x += step) {
+  for (let y = 0; y < H; y += step) {
+    const nx = x / W * 4 + sin(t * 0.3) * 2;
+    const ny = y / H * 4 + t * 0.2;
+    const n = noise2(nx, ny);
+
+    ctx.fillStyle = hsl(n * 360 + t * 20, 60 + n * 30, 30 + n * 35);
+    ctx.fillRect(x, y, step, step);
+  }
+}`,
+
+  "Line Wave": `// Flowing line wave
+const { clear, line, hsl, sin, cos, lerp } = lib;
+clear(ctx, '#0a0a1a');
+
+const rows = 40;
+const cols = 80;
+
+for (let j = 0; j < rows; j++) {
+  const y0 = (j / rows) * H;
+  for (let i = 0; i < cols; i++) {
+    const x = (i / cols) * W;
+    const phase = i * 0.15 + j * 0.1 + t;
+    const amp = sin(t * 0.5 + j * 0.2) * 30 + 20;
+    const y = y0 + sin(phase) * amp;
+    const yNext = y0 + sin(phase + 0.15) * amp;
+    const xNext = ((i + 1) / cols) * W;
+
+    ctx.strokeStyle = hsl(j * 8 + t * 30, 70, 50);
+    ctx.lineWidth = 1.5;
+    line(ctx, x, y, xNext, yNext);
+  }
+}`,
+
+  "Blank Canvas": `// Your blank canvas — go wild!
+const { clear } = lib;
+clear(ctx, '#0a0a1a');
+
+// Write your drawing code here.
+// Available: ctx (Canvas2D), t (seconds), W & H (dimensions), lib (helpers)
+// See the other demos for examples.
+`,
+};
+
+// ── Host / Engine ─────────────────────────────────────────────────
+
+const canvas = document.getElementById('canvas');
+const codeEl = document.getElementById('code');
+const errorBar = document.getElementById('error-bar');
+const demoSelect = document.getElementById('demos');
+const timeDisplay = document.getElementById('time-display');
+
+// Populate demo dropdown
+Object.keys(DEMOS).forEach(name => {
+  const opt = document.createElement('option');
+  opt.value = name;
+  opt.textContent = name;
+  demoSelect.appendChild(opt);
+});
+
+demoSelect.addEventListener('change', () => {
+  codeEl.value = DEMOS[demoSelect.value];
+  compile();
+});
+
+// Size canvas to pane
+function resizeCanvas() {
+  const pane = document.getElementById('canvas-pane');
+  canvas.width = pane.clientWidth;
+  canvas.height = pane.clientHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+const ctx = canvas.getContext('2d');
+
+// The current draw function — swapped on compile
+let userDraw = () => {};
+const startTime = performance.now();
+
+function compile() {
+  const code = codeEl.value;
+  try {
+    const fn = new Function('ctx', 't', 'W', 'H', 'lib', code);
+    // Test-run to catch runtime errors immediately
+    fn(ctx, (performance.now() - startTime) / 1000, canvas.width, canvas.height, lib);
+    userDraw = fn;
+    errorBar.style.display = 'none';
+  } catch (e) {
+    errorBar.textContent = e.message;
+    errorBar.style.display = 'block';
+    // Keep the old userDraw running
+  }
+}
+
+// Animation loop — never stops
+function loop() {
+  const t = (performance.now() - startTime) / 1000;
+  const W = canvas.width, H = canvas.height;
+  timeDisplay.textContent = 't = ' + t.toFixed(2);
+
+  try {
+    userDraw(ctx, t, W, H, lib);
+  } catch (e) {
+    errorBar.textContent = e.message;
+    errorBar.style.display = 'block';
+  }
+
+  requestAnimationFrame(loop);
+}
+
+// Ctrl-S to compile (prevent browser save dialog)
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    compile();
+  }
+});
+
+// Tab key inserts spaces in the textarea
+codeEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const start = codeEl.selectionStart;
+    const end = codeEl.selectionEnd;
+    codeEl.value = codeEl.value.substring(0, start) + '  ' + codeEl.value.substring(end);
+    codeEl.selectionStart = codeEl.selectionEnd = start + 2;
+  }
+});
+
+// Boot
+codeEl.value = DEMOS["Pulsing Circles"];
+compile();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

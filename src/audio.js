@@ -41,6 +41,8 @@ export function createAudio() {
     get time()     { return audio.currentTime || 0; },
     get duration() { return audio.duration || 0; },
     get isLoaded() { return loaded; },
+    get muted()    { return audio.muted; },
+    set muted(v)   { audio.muted = v; },
   };
 }
 

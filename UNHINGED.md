@@ -328,64 +328,8 @@ See IDEAS for the two approaches we like.
 - Mathematica does this: `PlotRange -> {{-1, 1}, {-1, 1}}` and it maps to whatever pixel size the window is.
 - Want something like: "my world is -1 to 1 in both axes" and shapes just go there, regardless of canvas pixel size.
 - Canvas can do this with `ctx.setTransform()` under the hood — flip Y, scale, translate origin.
-- But the declarative renderer should handle this automatically. User thinks in math coords, renderer maps to pixels.
+  - But the declarative renderer should handle this automatically. User thinks in math coords, renderer maps to pixels.
 
----
-
-## `render()` Instead of `return`
-
-- Currently: user code has one `return [...]` at the end. Don't like it.
-- Problem: forces everything into one big expression. Can't build up scenes across multiple lines naturally.
-- Want: **`render()`** — call it anywhere, multiple times, at the top level.
-- Each `render()` call draws its contents. Multiple calls = multiple draw groups. No single return needed.
-
-```js
-// instead of this:
-return [
-  bg('#111'),
-  fill('red'), circle(0, 0, 50),
-  fill('blue'), rect(100, 100, 30, 30),
-]
-
-// this:
-render(bg('#111'))
-
-render(
-  fill('red'),
-  circle(0, 0, 50),
-)
-
-render(
-  fill('blue'),
-  rect(100, 100, 30, 30),
-)
-```
-
-```js
-// real example — build up a scene with logic in between
-render(bg('#111'))
-
-const n = 12
-const r = 200
-for (let i = 0; i < n; i++) {
-  const angle = (i / n) * TAU + t
-  const x = W/2 + r * cos(angle)
-  const y = H/2 + r * sin(angle)
-  render(
-    fill(Color.hsl(i * 30 + t * 50, 70, 50)),
-    circle(x, y, 20),
-  )
-}
-
-render(
-  fill('white'),
-  text(W/2, H/2, 'hello'),
-)
-```
-
-- Each `render()` is its own scope (directives don't leak between calls)
-- Feels like Mathematica's `Show[]` — combine multiple `Graphics[]` objects
-- No return value needed from user code at all
 
 ### `table()` — Mathematica-style iteration inside `render()`
 
@@ -415,6 +359,52 @@ The `_` signals "auto-destructure from the object keys." Preprocessor rewrites i
 - `{i: {from: 3, to: 10, step: 2}}` — same, fully spelled out
 
 **Zero repetition requires syntactic sugar** — a preprocessor step that sees the `_` placeholder and auto-injects the object keys as variables. Not a big lift since user code already goes through `new Function()` compilation.
+
+---
+
+## Chaining Over `table()` — Legible Data Flow
+
+`table()` is opaque. Everything happens inside one callback — ranges, derived values, shape construction. You can't see intermediate state. Zero idea what `angle` spans from/to.
+
+```js
+// BAD: opaque, have to trace the math in your head
+table({i: [0, 59]}, ({i}) => {
+  const angle = (i / 60) * TWO_PI + t * 0.5
+  return [
+    fill(Color.rainbow(i / 60)), noStroke(),
+    circle(cx + cos(angle) * ringR, ringY + sin(angle) * ringR * 0.4, 8),
+  ]
+})
+```
+
+Instead, chain. Each step is a checkpoint you can read (or inspect).
+
+```js
+// GOOD: each step is legible
+ts = subdivide({t: {from: 0, to: 1, size: 60}})
+
+tas = ts.map(({t}) => ({t, angle: lerp(minAngle, maxAngle, t)}))
+
+circles = tas.map(({t, angle}) => [
+  fill(Color.rainbow(t)), noStroke(),
+  circle(vec2(cx, ringY) + vec2(cos(angle), sin(angle) * 0.4) * ringR, 8),
+])
+
+render(circles)
+```
+
+**Why this is better:**
+1. `subdivide()` — you see the range, you know what `t` is
+2. `.map()` to derive — you see exactly how `angle` relates to `t`
+3. `.map()` to shapes — inputs are named and understood
+4. `render()` — done
+
+Each step is a checkpoint. The user never holds the whole pipeline in their head at once. That's 배려.
+
+**Needs:**
+- `subdivide({name: {from, to, size}})` — generates array of objects with evenly-spaced values
+- `mapAppend` or `mapWith` — adds fields to each object without destructure-and-reconstruct boilerplate. Something like `ts.mapWith(({t}) => ({angle: lerp(min, max, t)}))` that merges the new fields in.
+- Vec2 arithmetic: `vec2 + vec2`, `vec2 * scalar` — so the shape line reads like math, not like `cx + cos(angle) * ringR`
 
 ---
 
@@ -468,4 +458,89 @@ render(
 - Already have `Color.palette` but it's discrete (indexed colors). Need continuous `[0,1] → Color` functions.
 - Standard schemes to ship: Viridis, Inferno, Plasma, Magma, Rainbow, SunsetColors, etc.
 - Custom schemes? User defines control points, we interpolate? Or just ship the good ones.
+
+---
+
+## Frame State — Making draw() Stateful
+
+Currently `draw(ctx, t, W, H)` is pure — each frame is a fresh function of `t`. No frame-to-frame memory. This locks out particle trails, physics sims, accumulators, anything that builds on previous state.
+
+### Approaches
+
+**A. State bag** — `draw(ctx, t, W, H, state)` where `state` is a persistent plain object. User reads/writes freely. Dead simple, max flexibility. Open question: does state reset on recompile or carry over?
+
+**B. init + draw** — User writes two functions: `init()` returns starting state, `draw(ctx, t, W, H, state)` evolves it. Recompile runs `init()` again. Cleaner contract, heavier syntax.
+
+**C. Closure state** — User-code scope persists across frames. Variables declared at top level survive. Compiled function runs once to set up, returns a draw function. Feels natural. Hot-swap story: new code = new closure = fresh state. "Edit resets state" — arguably the right behavior for live coding.
+
+**D. Previous frame as input** — Pass last frame as `ImageData` or offscreen canvas. Enables trails/feedback effects without explicit state. Narrow but very visual payoff.
+
+**E. No-clear mode** — Just stop clearing the canvas between frames. Instant trails/accumulation. No API change at all. Limited — you can only add, never selectively update.
+
+These aren't mutually exclusive. E is almost free. A or C could layer on top. D is orthogonal.
+
+### Closure state hot-swap (not actually tricky)
+
+Initially thought closure state makes hot-swap hard. On reflection: recompile runs the outer scope again, so closure variables reset. That's fine — you lose accumulated state on edit, get a clean slate with new logic. The only issue is if you want state to *survive* a recompile (then you need to externalize it, option A). For most live-coding cases, "edit resets state" is the natural mental model.
+
+---
+
+## Bar/Beat Counters and Cue-Relative Time
+
+Pure time-derived variables — no state needed, just math on `t`.
+
+**Bar counter (`$bar`)** — integer, `floor((t - firstBeat) / barDuration)`. If 10 bars have passed, `$bar` is 10. Alternating visuals per bar = `$bar % 2`.
+
+**Beat counter (`$beat`)** — same idea, finer grain.
+
+**Bars/beats since a cue point** — `$barsSinceCue = $bar - lastCueBar`. Pure if cue points are known ahead of time (from the timeline).
+
+These fit cleanly into the current stateless model — derived values injected alongside `t`. No frame-to-frame memory needed. Separate feature from frame state.
+
+**Key insight:** bar/beat counters and cue-relative time are NOT about state — they're about richer time-derived variables. A different axis from the frame state question above.
+
+---
+
+## `$$` Prefix — Stateful Variables
+
+`$` means "reactive, external, time-derived" — `$bar`, `$beat`, `$kick.s`, `$p1.x`. Injected by the system, read-only from user code's perspective.
+
+Stateful variables are different: **owned by user code**, persist across frames, mutated by the draw function. Need a distinct prefix.
+
+**Candidates considered:**
+- `$$` — double-dollar = "this sticks around." Stays in `$`-family, visually distinct, easy to type.
+- `@` — fresh symbol, not used in JS. Would need compiler sugar to rewrite. Looks clean.
+- `$_` — underscore = "private." A bit ugly.
+- `_` alone — too overloaded (JS convention for throwaway/unused).
+- No prefix (bare closure vars) — works structurally but no visual signal of what persists vs resets.
+
+**Going with `$$` for now.** Compiler sugar is OK — `$$particles` can be rewritten by the preprocessor into whatever backing storage is needed (closure var, state bag slot, etc.).
+
+```js
+$$particles = $$particles || []
+$$particles.push({x: rand() * W, y: rand() * H})
+
+// cull old ones
+if ($$particles.length > 500) $$particles.shift()
+
+render(
+  ...$$particles.map(p => circle(p.x, p.y, 3))
+)
+```
+
+**Design decisions:**
+- `$$` vars **persist across recompiles** (externalized state, not closure). Edit your draw code, `$$particles` keeps its data.
+- **No declaration needed** — just use `$$foo` and it exists. Implicit init. Compiler rewrites to a backing store (e.g. `__state__["foo"]`).
+- **Scope TBD** — per-sketch or global? Don't worry about it yet. Per-sketch feels right but can decide later.
+- **Implementation cost is near-zero.** One object property lookup per access. The compiler sugar is a simple rewrite pass.
+
+**Clearing `$$` state — two levels:**
+- **`clear($$foo)`** — reset a single variable. Safe, surgical. "I want to restart this particle system."
+- **`clearAll()` / wipe everything** — nuke all `$$` state. Dangerous — you lose everything. Needs confirmation or a keyboard shortcut you have to mean (not something you fat-finger).
+
+Both are needed. The selective clear is the everyday tool. The full wipe is the emergency button.
+
+**The `$`-prefix family so far:**
+- `$foo` — reactive, external, read-only (time, beats, intervals, UI controls)
+- `$$foo` — stateful, user-owned, read-write, persists across frames and edits
 

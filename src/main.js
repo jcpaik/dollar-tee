@@ -6,6 +6,7 @@ import { createAudio } from './audio.js';
 import { createTimeline, FIRST_BEAT } from './timeline.js';
 import { compile } from './compiler.js';
 import { stdlib } from './stdlib.js';
+import { probe } from './probe.js';
 import { DEMOS } from './demos.js';
 import { updateLoopTime } from './intervals.js';
 
@@ -20,10 +21,12 @@ const timeDisplay = document.getElementById('time-display');
 
 // Transport DOM refs
 const audioFileInput = document.getElementById('audio-file');
-const audioLoadBtn   = document.getElementById('audio-load-btn');
+const musicToggle    = document.getElementById('music-toggle');
 const playBtn        = document.getElementById('play-btn');
 const audioTimeEl    = document.getElementById('audio-time');
 const snapBtn        = document.getElementById('snap-btn');
+const transportEl    = document.getElementById('transport');
+const transportSash  = document.getElementById('transport-sash');
 
 // ── Engine + Audio + Timeline ──
 
@@ -62,6 +65,7 @@ const editor = createEditor(editorEl);
 // ── Compile + swap ──
 
 function run() {
+  probe.clear();
   const code = editor.getCode();
   try {
     const drawFn = compile(code, stdlib);
@@ -203,13 +207,11 @@ window.addEventListener('resize', resize);
 
 // ── Audio transport ──
 
-// Auto-load music.mp3 on boot
+// Pre-load music.mp3, wire audio as time source once ready
 async function loadTrack() {
   await audio.loadPath('/resources/music.mp3');
   engine.setTimeSource(() => audio.time);
   playBtn.disabled = false;
-  audioLoadBtn.textContent = 'music.mp3';
-
   // Decode for waveform
   const resp = await fetch('/resources/music.mp3');
   const buf = await resp.arrayBuffer();
@@ -219,8 +221,18 @@ async function loadTrack() {
 }
 loadTrack();
 
-// Manual load as fallback
-audioLoadBtn.addEventListener('click', () => audioFileInput.click());
+// Music toggle — mute / unmute only, does not affect time
+musicToggle.addEventListener('click', () => {
+  audio.muted = !audio.muted;
+  musicToggle.textContent = audio.muted ? '\u266B Off' : '\u266B On';
+  musicToggle.classList.toggle('active', !audio.muted);
+});
+
+// Load audio file manually
+musicToggle.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  audioFileInput.click();
+});
 
 audioFileInput.addEventListener('change', async (e) => {
   const file = e.target.files[0];
@@ -228,10 +240,10 @@ audioFileInput.addEventListener('change', async (e) => {
   await audio.loadFile(file);
   engine.setTimeSource(() => audio.time);
   playBtn.disabled = false;
-  audioLoadBtn.textContent = file.name.length > 18
-    ? file.name.slice(0, 15) + '...'
-    : file.name;
-  audioLoadBtn.title = file.name;
+  audio.muted = false;
+  musicToggle.textContent = '\u266B On';
+  musicToggle.classList.add('active');
+  musicToggle.title = file.name;
 });
 
 playBtn.addEventListener('click', () => {
@@ -245,6 +257,47 @@ playBtn.addEventListener('click', () => {
 snapBtn.addEventListener('click', () => {
   timeline.setSnap(!timeline.snapping);
   snapBtn.classList.toggle('active', timeline.snapping);
+});
+
+// ── Transport sash — drag to resize, double-click to toggle ──
+
+let sashDragging = false;
+
+transportSash.addEventListener('mousedown', (e) => {
+  e.preventDefault();
+  sashDragging = true;
+  transportSash.classList.add('dragging');
+
+  const onMove = (e) => {
+    const bottomY = window.innerHeight - e.clientY;
+    if (bottomY < 20) {
+      transportEl.classList.add('collapsed');
+    } else {
+      transportEl.classList.remove('collapsed');
+      transportEl.style.height = bottomY + 'px';
+    }
+    resize();
+  };
+
+  const onUp = () => {
+    sashDragging = false;
+    transportSash.classList.remove('dragging');
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  };
+
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+});
+
+transportSash.addEventListener('dblclick', () => {
+  if (transportEl.classList.contains('collapsed')) {
+    transportEl.classList.remove('collapsed');
+    transportEl.style.height = '';
+  } else {
+    transportEl.classList.add('collapsed');
+  }
+  resize();
 });
 
 // ── Boot ──

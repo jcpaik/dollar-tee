@@ -103,6 +103,30 @@ body {
   background: #111;
 }
 
+#editor-pane {
+  position: relative;
+}
+
+#probe-panel {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.75);
+  color: #aaa;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 10;
+  max-height: 50%;
+  overflow: auto;
+  line-height: 1.6;
+}
+
+#probe-panel .probe-label {
+  color: #ff764d;
+}
+
 canvas {
   display: block;
 }
@@ -112,12 +136,34 @@ canvas {
 #transport {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 6px 12px 8px;
   background: #222;
   border-top: 1px solid #3a3a3a;
   flex-shrink: 0;
   font-size: 13px;
+  overflow: hidden;
+}
+
+#transport.collapsed #transport-inner {
+  display: none;
+}
+
+#transport-sash {
+  height: 4px;
+  cursor: ns-resize;
+  background: transparent;
+  flex-shrink: 0;
+}
+
+#transport-sash:hover,
+#transport-sash.dragging {
+  background: #ff764d;
+}
+
+#transport-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 2px 12px 8px;
 }
 
 #transport-controls {

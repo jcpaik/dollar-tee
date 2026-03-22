@@ -3,6 +3,9 @@
 
 import { Color } from './color.js';
 import { $loop, $beat, $bars, tween } from './intervals.js';
+import { vec2 } from './vec.js';
+import { complex } from './complex.js';
+import { probe } from './probe.js';
 import {
   easeLinear,
   easeInSine,    easeOutSine,    easeInOutSine,
@@ -21,13 +24,21 @@ import {
 
 // ── Math ──────────────────────────────────────────────────────────
 
+function If(cond, a, b) { return cond ? a : b; }
+
 function lerp(a, b, t)  { return a + (b - a) * t; }
 function clamp(x, lo = 0, hi = 1) { return Math.max(lo, Math.min(hi, x)); }
 function map(v, inMin, inMax, outMin, outMax) {
   return outMin + (outMax - outMin) * ((v - inMin) / (inMax - inMin));
 }
 
-function ease(t)      { return t * t * (3 - 2 * t); }
+function ease(a, b, t, fn) {
+  if (b === undefined) return a * a * (3 - 2 * a); // ease(t) smoothstep
+  const et = fn ? fn(t) : t;
+  if (typeof a === 'number') return a + (b - a) * et;
+  if (a.lerp) return a.lerp(b, et); // Vec2, Complex
+  return a + (b - a) * et;
+}
 
 // Simple hash-based noise
 function _hash(n) { const s = Math.sin(n) * 43758.5453123; return s - Math.floor(s); }
@@ -255,7 +266,7 @@ function draw(ctx, items) { renderScene(ctx, items); }
 
 export const stdlib = {
   // Math
-  lerp, clamp, map,
+  If, lerp, clamp, map,
   ease, noise, noise2,
 
   // Easings (33 Penner + utilities)
@@ -287,8 +298,11 @@ export const stdlib = {
   $bar5: $bars[4], $bar6: $bars[5], $bar7: $bars[6], $bar8: $bars[7],
   tween,
 
+  // Vector & Complex
+  vec2, complex,
+
   // Helpers
-  val, make3D, draw, table,
+  val, make3D, draw, table, probe,
 
   // Math builtins
   PI: Math.PI, TWO_PI: Math.PI * 2, HALF_PI: Math.PI / 2,

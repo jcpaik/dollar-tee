@@ -5,8 +5,15 @@ body {
   color: #e0e0e0;
   font-family: 'Menlo', 'Consolas', monospace;
   display: flex;
+  flex-direction: column;
   height: 100vh;
   overflow: hidden;
+}
+
+#main {
+  flex: 1;
+  display: flex;
+  min-height: 0;
 }
 
 /* ── Editor pane ──────────────────────────────────────────────── */
@@ -98,4 +105,67 @@ body {
 
 canvas {
   display: block;
+}
+
+/* ── Transport bar ───────────────────────────────────────────── */
+
+#transport {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background: #16213e;
+  border-top: 2px solid #333;
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+#transport button {
+  background: #0f3460;
+  color: #e0e0e0;
+  border: 1px solid #555;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+#transport button:hover {
+  background: #1a4a7a;
+}
+
+#transport button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+#transport button.active {
+  background: #e94560;
+  border-color: #e94560;
+}
+
+#timeline {
+  flex: 1;
+  height: 18px;
+  background: #0a0a1a;
+  border-radius: 3px;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+#timeline-fill {
+  height: 100%;
+  background: #e94560;
+  width: 0%;
+  pointer-events: none;
+}
+
+#audio-time {
+  color: #888;
+  font-size: 12px;
+  min-width: 95px;
+  text-align: center;
 }

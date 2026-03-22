@@ -8,8 +8,10 @@ export function createEngine(canvas) {
   let running = false;
   let tickCb = null;
   let errorCb = null;
+  let timeSource = null;
 
   function getTime() {
+    if (timeSource) return timeSource();
     return (performance.now() - startTime) / 1000;
   }
 
@@ -37,5 +39,6 @@ export function createEngine(canvas) {
     setDraw(fn)   { drawFn = fn; },
     set onTick(fn)  { tickCb = fn; },
     set onError(fn) { errorCb = fn; },
+    setTimeSource(fn) { timeSource = fn; },
   };
 }

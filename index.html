@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Canvas</title>
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <div id="editor-pane">
+    <div id="toolbar">
+      <select id="demo-select"></select>
+      <label><input type="checkbox" id="auto-run" checked> Auto</label>
+      <span class="time-display" id="time-display">t = 0.00</span>
+      <span class="hint">Ctrl-S to run</span>
+    </div>
+    <div id="editor-container"></div>
+    <div id="error-bar"></div>
+  </div>
+  <div id="canvas-pane">
+    <canvas id="canvas"></canvas>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

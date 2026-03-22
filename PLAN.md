@@ -2,7 +2,7 @@
 
 ## The Dream
 A split-screen app: **code editor on the left, canvas on the right**.
-Edit code → press Ctrl-S (or even just type) → the rendering updates *instantly*
+Edit code → press Ctrl-S (or just type) → the rendering updates *instantly*
 while a global `time` variable keeps ticking. Like thebookofshaders.com but for
 2D/3D canvas drawing, not just shaders.
 
@@ -17,109 +17,87 @@ while a global `time` variable keeps ticking. Like thebookofshaders.com but for
   time keeps running.
 
 ## Key Insight (How Strudel/Hydra Do It)
-The trick is simple in principle:
-
 1. **The animation loop lives in the *host*, not in user code.**
    `requestAnimationFrame` runs forever in the host. It calls a `userDraw(t)` fn.
 2. **User code is just a *factory* that produces a new `draw` function.**
-   On each edit, we `eval()` / `new Function()` the user code to get a fresh
-   `draw(ctx, t, w, h)` callback. We swap the pointer. The loop never stops.
+   On each edit, we `new Function()` the user code to get a fresh draw callback.
+   We swap the pointer. The loop never stops.
 3. **Global time is owned by the host.** User code receives `t` as a parameter.
    Edits don't reset the clock.
 
-That's it. The "hard" version (incremental, keeping state across reloads) is
-much harder, but this swap-the-draw-function approach is the **MVP**.
-
-## Architecture (Minimal — v0)
+## Architecture (v1 — current)
 
 ```
-┌─────────────────────────────────────────────────┐
-│  index.html                                     │
-│  ┌──────────────────┐  ┌──────────────────────┐ │
-│  │  <textarea> or   │  │  <canvas>            │ │
-│  │  CodeMirror      │  │                      │ │
-│  │                  │  │  host runs rAF loop  │ │
-│  │  user writes     │  │  calls userDraw(ctx, │ │
-│  │  draw(ctx,t,w,h) │  │    t, w, h)          │ │
-│  │                  │  │                      │ │
-│  └──────────────────┘  └──────────────────────┘ │
-│         Ctrl-S → eval() → swap userDraw         │
-└─────────────────────────────────────────────────┘
+index.html              ← shell: two panes, loads main.js
+src/
+  main.js               ← entry: wires editor + engine + compiler
+  engine.js             ← rAF loop, global time, draw-fn swap
+  compiler.js           ← new Function() + declarative auto-render
+  editor.js             ← CodeMirror 6 (one-dark, JS mode)
+  stdlib.js             ← shapes, directives, math, noise, renderer
+  color.js              ← Color class (RGB/HSL/hex, mix, palette)
+  demos.js              ← demo sketch strings
+  style.css             ← layout
 ```
 
-**No build step. No bundler. Single HTML file to start.**
+### Data flow
+```
+editor.onChange → debounce → compile(code, stdlib)
+                                  ↓
+                            new Function(ctx, t, W, H, ...stdlibNames, code)
+                                  ↓
+                            engine.setDraw(fn)   ← pointer swap, loop never stops
+                                  ↓
+                            loop: fn(ctx, t, W, H)
+                                  ↓
+                            if returns Array → renderScene(ctx, array)
+```
 
-## v0 Scope (What to Build Now)
+### Two rendering modes
+1. **Imperative**: user draws on `ctx` directly. No return value.
+2. **Declarative (Mathematica-style)**: user returns an array of shapes and
+   directives. The host renderer walks it. Nested arrays = scoped groups
+   (push/pop style state). Color objects in the array set the current fill.
 
-### Host responsibilities
-- Own the `<canvas>` and the `requestAnimationFrame` loop
-- Maintain `startTime`, compute `t = (now - startTime) / 1000`
-- On Ctrl-S (or on-type with debounce): eval user code, swap `userDraw`
-- Provide a small standard library the user code can call:
-  - `line(ctx, x1, y1, x2, y2)`
-  - `circle(ctx, x, y, r)`
-  - `rect(ctx, x, y, w, h)`
-  - `polygon(ctx, points)`
-  - `setColor(ctx, r, g, b, a)`
-  - `clear(ctx, color)`
-  - `ease(t)` — smoothstep or sine easing
-  - `lerp(a, b, t)`
-  - `map(value, inMin, inMax, outMin, outMax)`
-
-### User code contract
-User writes a function body that receives `(ctx, t, W, H, lib)`:
 ```js
-// Example: pulsing circle
-const { circle, clear, ease, lerp } = lib;
-clear(ctx, '#111');
-const r = lerp(50, 200, ease(Math.sin(t) * 0.5 + 0.5));
-circle(ctx, W/2, H/2, r);
-ctx.fillStyle = 'hsl(' + (t * 60 % 360) + ', 80%, 60%)';
-ctx.fill();
+// Declarative
+return [
+  bg('#111'),
+  fill(Color.hsl(t * 30, 70, 50)),
+  circle(W/2, H/2, 100),
+  [stroke('#fff'), lineWidth(2), line(0, 0, W, H)],  // scoped group
+];
+
+// Imperative
+ctx.fillStyle = '#111';
+ctx.fillRect(0, 0, W, H);
+ctx.fillStyle = Color.hsl(t * 30, 70, 50).toCSS();
+ctx.beginPath(); ctx.arc(W/2, H/2, 100, 0, Math.PI*2); ctx.fill();
 ```
 
-### Demo sketches to ship with
-1. **Pulsing circle** — easing + time → radius
-2. **Grid of boxes from 3D array** — fill a 3D array, render as colored boxes
-3. **Rotating polygon** — time drives rotation angle
-4. **Color gradient** — pixel-level or rect-level color mixing
+## Stdlib surface
+- **Shapes**: `circle(x,y,r)` `rect(x,y,w,h)` `line(x1,y1,x2,y2)` `polygon(pts)` `arc(x,y,r,s,e)` `ellipse(x,y,rx,ry)` `text(str,x,y,sz)`
+- **Directives**: `fill(c)` `stroke(c)` `lineWidth(w)` `noFill()` `noStroke()` `bg(c)` `font(f)` `alpha(a)`
+- **Color**: `Color.hsl(h,s,l)` `.rgb(r,g,b)` `.hex('#fff')` `.auto(i)` `.palette` `.mix()` `.lighten()` `.darken()` `.alpha(a)` `.rainbow(t)` `.viridis(t)`
+- **Math**: `lerp` `clamp` `map` `ease` `easeIn` `easeOut` `easeInOut` `noise` `noise2` + all `Math.*` as top-level names
+- **Helpers**: `val(v, min, max)` (future slider) `make3D(nx,ny,nz,fn)` `draw(ctx, scene)` (explicit render)
 
-### What we skip for now
-- Color picker UI on literals (future: parse AST, overlay pickers)
-- Incremental/stateful hot-reload (future: keep user state across swaps)
-- CodeMirror (start with `<textarea>`, upgrade later)
-- Multi-file support
-- Sound/audio integration
+## Recompile strategy
+Full recompile on every save/keystroke:
+- `new Function('ctx', 't', 'W', 'H', ...Object.keys(stdlib), code)`
+- try/catch — syntax error → keep old draw, show error bar
+- No state preservation across edits (pure-functional: output = f(t))
 
-## Recompile Strategy
-For v0: **full recompile on every save.** This means:
-- `new Function('ctx', 't', 'W', 'H', 'lib', userCode)`
-- Wrap in try/catch — if syntax error, keep the old draw function, show error
-- No state preservation across edits (user loses any variables)
+## Decisions made
+- **Raw Canvas 2D** over p5.js — simpler, no dependency, we control the loop
+- **Plain JS** over TypeScript — readable flow, no compile step friction
+- **CodeMirror 6** over Monaco — lighter, better for custom widgets (future sliders)
+- **Both imperative and declarative modes** — user chooses per sketch
+- **Mathematica-style scene arrays** — Color/directives interleaved with shapes
 
-This is fine for pure-functional drawing (output = f(t)) which is the 80% case.
-
-## File Structure (v0 — single file is fine)
-```
-index.html    — everything: editor, canvas, host loop, stdlib
-PLAN.md       — this file
-```
-
-## Next Steps
-1. ✅ Write this plan
-2. Build `index.html` with:
-   - Split layout (flexbox)
-   - `<textarea>` on left, `<canvas>` on right
-   - Host animation loop
-   - stdlib functions
-   - Ctrl-S eval + swap
-   - Error display overlay
-   - 4 demo sketches (dropdown to switch)
-3. Test it, iterate
-4. Later: CodeMirror, color pickers, stateful reload
-
-## Open Questions
-- Should we use p5.js under the hood or raw Canvas 2D API?
-  **Decision: raw Canvas 2D.** Simpler, no dependency, we control the loop.
-  p5.js's `setup()/draw()` model fights against our "swap the draw fn" approach.
-- WebGL/3D later? Could add a Three.js mode, but start 2D.
+## What's next
+See `TODO.md` for the prioritized backlog. Key upcoming work:
+- `val()` inline sliders (P1)
+- Color picker on color literals (P1)
+- Play/pause/reset, FPS counter, screenshot export (P2)
+- Transform stack, grid helpers, proper noise (P3)

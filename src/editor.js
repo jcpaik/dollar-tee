@@ -4,9 +4,12 @@ import { EditorView, basicSetup } from 'codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorState } from '@codemirror/state';
+import { valSliderExtension, valSliderChange } from './val-slider.js';
+import { colorPickerExtension, colorPickerChange } from './color-picker.js';
 
 export function createEditor(parent) {
   let changeCb = null;
+  let sliderCb = null;
 
   const state = EditorState.create({
     doc: '',
@@ -14,8 +17,16 @@ export function createEditor(parent) {
       basicSetup,
       javascript(),
       oneDark,
+      valSliderExtension(),
+      colorPickerExtension(),
       EditorView.updateListener.of((update) => {
-        if (update.docChanged && changeCb) changeCb();
+        if (update.docChanged) {
+          const isWidget = update.transactions.some(
+            tr => tr.annotation(valSliderChange) || tr.annotation(colorPickerChange)
+          );
+          if (isWidget && sliderCb) sliderCb();
+          else if (changeCb) changeCb();
+        }
       }),
       EditorView.theme({
         '&': { height: '100%', fontSize: '14px' },
@@ -45,6 +56,7 @@ export function createEditor(parent) {
       });
     },
     onChange(fn) { changeCb = fn; },
+    onSliderChange(fn) { sliderCb = fn; },
     view,
   };
 }

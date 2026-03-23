@@ -218,3 +218,55 @@ canvas {
   min-width: 95px;
   text-align: center;
 }
+
+/* ── val() inline sliders ──────────────────────────────────────── */
+
+.val-slider-popover {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #2a2a2a;
+  border: 1px solid #4a4a4a;
+  border-radius: 6px;
+  padding: 6px 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.val-slider-popover input[type=range] {
+  width: 150px;
+  accent-color: #ff764d;
+}
+
+.val-slider-value {
+  color: #ff764d;
+  font-family: 'Menlo', 'Consolas', monospace;
+  font-size: 13px;
+  min-width: 40px;
+  text-align: right;
+}
+
+.cm-val-clickable {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: #ff764d80;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* ── Color picker ──────────────────────────────────────────────── */
+
+.cm-color-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 1px solid #666;
+  border-radius: 2px;
+  margin-right: 3px;
+  vertical-align: middle;
+}
+
+.cm-color-clickable {
+  cursor: pointer;
+}

@@ -13,29 +13,28 @@ export const DEMOS = {
 // Math:    lerp  ease  map  clamp  noise  noise2  sin cos abs ...
 // Easing:  easeInQuad  easeOutCubic  easeInOutElastic  easeOutBounce  ...
 //          cubicBezier(x1,y1,x2,y2)  spring(stiffness, damping)
-// Beats:   $beat  $loop  $bar1–$bar8  $bars[i]  tween($bar1, 0, 100, "outCubic")
-//          $bar1.ease("outCubic")  $bar1.ease("outCubic", 50, 250)
+// Beats:   $beat  $loop  $beat1–$beat8  $beats[i]  tween($beat1, 0, 100, "outCubic")
+//          $beat1.ease("outCubic")  $beat1.n (count)  $beat1.t (elapsed)
 // Render:  render(fill('red'), circle(x,y,r))  — call anywhere, multiple times
-// Table:   table({i: 8}, ({i}) => circle(i*50, 50, 20))  — can return a single primitive
-//          table({i: 8, j: 8}, ({i,j}) => [fill(...), circle(i*50, j*50, 20)])
+// Space:   subdivide({t: {from: 0, to: 1, size: 60}})  — parameter array
+//          .mapWith(({t}) => ({angle: t * TWO_PI}))     — derive new fields
 
 render(bg('#0a0a1a'))
 `,
 
   "Pulsing Circles": `\
 // Concentric circles pulsing to the beat
-render(
-  bg('#0a0a1a'),
-  table({i: [12, 0]}, ({i}) => {
-    const bar = $bars[i % 8]
-    const pulse = bar.active ? bar.ease("outCubic") : 0
-    const r = lerp(20, min(W, H) * 0.45, i / 12) * (0.7 + 0.3 * pulse)
-    return [
-      fill(Color.hsl(t * 30 + i * 25, 70, 40 + pulse * 20)),
-      circle(W / 2, H / 2, r),
-    ]
+const circles = subdivide({i: {from: 12, to: 0, size: 13}})
+  .mapWith(({i}) => {
+    const beat = $beats[i % 8]
+    return { pulse: beat.active ? beat.ease("outCubic") : 0 }
   })
-)
+  .map(({i, pulse}) => [
+    fill(Color.hsl(t * 30 + i * 25, 70, 40 + pulse * 20)),
+    circle(W/2, H/2, lerp(20, min(W,H) * 0.45, i / 12) * (0.7 + 0.3 * pulse)),
+  ])
+
+render(bg('#0a0a1a'), circles)
 `,
 
   "Easing Gallery": `\
@@ -54,39 +53,36 @@ const cellW = (W - padX * 2) / cols
 const cellH = (H - padY * 2) / rows
 const progress = $beat.progress
 
-render(
-  bg('#0a0a1a'),
-  table({idx: [0, easings.length - 1]}, ({idx}) => {
-    const [name, fn] = easings[idx]
-    const col = idx % cols, row = floor(idx / cols)
-    const ox = padX + col * cellW, oy = padY + row * cellH
-    const gw = cellW * 0.7, gh = cellH * 0.55
-    const dotX = ox + progress * gw
-    const dotY = oy + gh + 20 - fn(progress) * gh
+const gallery = easings.map(([name, fn], idx) => {
+  const col = idx % cols, row = floor(idx / cols)
+  const ox = padX + col * cellW, oy = padY + row * cellH
+  const gw = cellW * 0.7, gh = cellH * 0.55
 
-    return [
-      // Label
-      fill('#666'), font('11px monospace'), text(name, ox + 4, oy + 14),
+  // Points along the curve
+  const pts = subdivide({s: {from: 0, to: 1, size: 41}})
+    .mapWith(({s}) => ({
+      px: ox + s * gw,
+      py: oy + gh + 20 - fn(s) * gh,
+    }))
 
-      // Axes
-      [stroke('#333'), lineWidth(1), noFill(),
-        line(ox, oy + gh + 20, ox + gw, oy + gh + 20),
-        line(ox, oy + 20, ox, oy + gh + 20)],
+  // Connect consecutive points into line segments
+  const curve = pts.slice(0, -1).map((p, k) => [
+    stroke(Color.hsl(idx * 20, 70, 55)), lineWidth(1.5),
+    line(p.px, p.py, pts[k + 1].px, pts[k + 1].py),
+  ])
 
-      // Curve
-      ...table({i: [0, 39]}, ({i}) => {
-        const x0 = ox + (i / 40) * gw
-        const x1 = ox + ((i + 1) / 40) * gw
-        const y0 = oy + gh + 20 - fn(i / 40) * gh
-        const y1 = oy + gh + 20 - fn((i + 1) / 40) * gh
-        return [stroke(Color.hsl(idx * 20, 70, 55)), lineWidth(1.5), line(x0, y0, x1, y1)]
-      }),
+  return [
+    fill('#666'), font('11px monospace'), text(name, ox + 4, oy + 14),
+    [stroke('#333'), lineWidth(1), noFill(),
+      line(ox, oy + gh + 20, ox + gw, oy + gh + 20),
+      line(ox, oy + 20, ox, oy + gh + 20)],
+    curve,
+    fill('#fff'), noStroke(),
+    circle(ox + progress * gw, oy + gh + 20 - fn(progress) * gh, 3),
+  ]
+})
 
-      // Moving dot
-      fill('#fff'), noStroke(), circle(dotX, dotY, 3),
-    ]
-  })
-)
+render(bg('#0a0a1a'), gallery)
 `,
 
   "Bouncing Dots": `\
@@ -97,45 +93,43 @@ const easings = [
 ]
 const spacing = W / (easings.length + 1)
 
-render(
-  bg('#0a0a1a'),
-  table({i: [0, easings.length - 1]}, ({i}) => {
-    const x = spacing * (i + 1)
-    const eased = $beat.ease(easings[i])
-    const y = lerp(H * 0.85, H * 0.15, eased)
-    const r = 15 + eased * 10
-    return [
-      [alpha(0.3), fill(Color.hsl(i * 60, 70, 40)), noStroke(), circle(x, y, r * 0.6)],
-      [alpha(1), fill(Color.hsl(i * 60, 70, 55)), circle(x, y, r)],
-    ]
-  })
-)
+const dots = easings.map((fn, i) => {
+  const x = spacing * (i + 1)
+  const eased = $beat.ease(fn)
+  const y = lerp(H * 0.85, H * 0.15, eased)
+  const r = 15 + eased * 10
+  return [
+    [alpha(0.3), fill(Color.hsl(i * 60, 70, 40)), noStroke(), circle(x, y, r * 0.6)],
+    [alpha(1), fill(Color.hsl(i * 60, 70, 55)), circle(x, y, r)],
+  ]
+})
+
+render(bg('#0a0a1a'), dots)
 `,
 
-  "Table Demo": `\
-// table() can return a single primitive — no array needed
-render(
-  bg('#0a0a1a'),
-
-  // Single primitive: just return an ngon directly
-  fill('#333'), noStroke(),
-  table({i: 6}, ({i}) =>
+  "Dot Grid": `\
+// 2D parameter space mapped to visual properties
+// Nested ngons from a range
+const ngons = subdivide({i: {from: 1, to: 6, size: 6}})
+  .map(({i}) =>
     ngon(W/2, H/2, min(W,H) * 0.05 * i, 3 + i, t * (0.5 + i * 0.1))
-  ),
+  )
 
-  // Or return [style, shape] arrays for per-item color
-  table({i: 10, j: 10}, ({i, j}) => {
-    const phase = t + i * 0.3 + j * 0.3
-    const pulse = easeOutCubic(abs(sin(phase)))
-    const x = W * 0.1 + (i - 1) * (W * 0.08)
-    const y = H * 0.1 + (j - 1) * (H * 0.08)
-    return [
-      fill(Color.hsl(i * 20 + j * 20 + t * 40, 70, 40 + pulse * 25)),
-      noStroke(),
-      circle(x, y, 8 + pulse * 12),
-    ]
+// 2D grid — subdivide creates the position space, mapWith derives values
+const dots = subdivide({
+    x: {from: W * 0.1, to: W * 0.82, size: 10},
+    y: {from: H * 0.1, to: H * 0.82, size: 10},
   })
-)
+  .mapWith(({x, y}) => ({
+    pulse: easeOutCubic(abs(sin(t + x * 0.01 + y * 0.01))),
+  }))
+  .map(({x, y, pulse}) => [
+    fill(Color.hsl(x * 0.4 + y * 0.4 + t * 40, 70, 40 + pulse * 25)),
+    noStroke(),
+    circle(x, y, 8 + pulse * 12),
+  ])
+
+render(bg('#0a0a1a'), fill('#333'), noStroke(), ngons, dots)
 `,
 
   "3D Box Grid": `\
@@ -200,55 +194,62 @@ const cx = W / 2, cy = H / 2
 const sides = 5 + floor(sin(t * 0.3) * 2 + 2)
 const baseR = min(W, H) * 0.3
 
-render(
-  table({j: [0, 2]}, ({j}) => {
-    const r = baseR * (0.5 + j * 0.25)
-    const angle = t * (0.5 + j * 0.2) * (j % 2 ? -1 : 1)
-    return [
-      noFill(),
-      stroke(Color.hsl(t * 50 + j * 120, 80, 55)),
-      lineWidth(2),
-      ngon(cx, cy, r, sides, angle),
-    ]
-  })
-)
+const polys = subdivide({j: {from: 0, to: 2, size: 3}})
+  .mapWith(({j}) => ({
+    r: baseR * (0.5 + j * 0.25),
+    angle: t * (0.5 + j * 0.2) * (j % 2 ? -1 : 1),
+  }))
+  .map(({j, r, angle}) => [
+    noFill(),
+    stroke(Color.hsl(t * 50 + j * 120, 80, 55)),
+    lineWidth(2),
+    ngon(cx, cy, r, sides, angle),
+  ])
+
+render(polys)
 `,
 
   "Color Field": `\
-// Noise-based animated color grid using table()
-render(
-  table({x: [0, W - 10, 10], y: [0, H - 10, 10]}, ({x, y}) => {
-    const nx = x / W * 4 + sin(t * 0.3) * 2
-    const ny = y / H * 4 + t * 0.2
-    const n = noise2(nx, ny)
-    return [
-      fill(Color.hsl(n * 360 + t * 20, 60 + n * 30, 30 + n * 35)),
-      noStroke(),
-      rect(x, y, 10, 10),
-    ]
+// Noise-based animated color grid
+const step = 10
+
+const colors = subdivide({
+    x: {from: 0, to: W - step, step: step},
+    y: {from: 0, to: H - step, step: step},
   })
-)
+  .mapWith(({x, y}) => ({
+    n: noise2(x / W * 4 + sin(t * 0.3) * 2, y / H * 4 + t * 0.2),
+  }))
+  .map(({x, y, n}) => [
+    fill(Color.hsl(n * 360 + t * 20, 60 + n * 30, 30 + n * 35)),
+    noStroke(),
+    rect(x, y, step, step),
+  ])
+
+render(colors)
 `,
 
   "Line Wave": `\
 // Flowing sine wave lines
-render(
-  bg('#0a0a1a'),
-  table({j: [0, 39], i: [0, 79]}, ({j, i}) => {
+const waves = subdivide({j: 40, i: 80})
+  .mapWith(({j, i}) => {
     const y0 = (j / 40) * H
-    const x = (i / 80) * W
-    const phase = i * 0.15 + j * 0.1 + t
     const amp = sin(t * 0.5 + j * 0.2) * 30 + 20
-    const y = y0 + sin(phase) * amp
-    const xNext = ((i + 1) / 80) * W
-    const yNext = y0 + sin(phase + 0.15) * amp
-    return [
-      stroke(Color.hsl(j * 8 + t * 30, 70, 50)),
-      lineWidth(1.5), noFill(),
-      line(x, y, xNext, yNext),
-    ]
+    const phase = i * 0.15 + j * 0.1 + t
+    return {
+      x: (i / 80) * W,
+      y: y0 + sin(phase) * amp,
+      xNext: ((i + 1) / 80) * W,
+      yNext: y0 + sin(phase + 0.15) * amp,
+    }
   })
-)
+  .map(({j, x, y, xNext, yNext}) => [
+    stroke(Color.hsl(j * 8 + t * 30, 70, 50)),
+    lineWidth(1.5), noFill(),
+    line(x, y, xNext, yNext),
+  ])
+
+render(bg('#0a0a1a'), waves)
 `,
 
   "Bouncing Beats": `\
@@ -260,20 +261,26 @@ const easings = [
 ]
 const spacing = W / 9
 
+const beats = subdivide({i: 8})
+  .mapWith(({i}) => {
+    const beat = $beats[i]
+    const eased = beat.active ? beat.ease(easings[i]) : 0
+    return {
+      x: spacing * (i + 1),
+      c: Color.viridis(i / 8),
+      eased,
+      y: lerp(H * 0.82, H * 0.18, eased),
+      r: 12 + eased * 18,
+    }
+  })
+  .map(({x, y, r, c, eased}) => [
+    [alpha(0.2 + eased * 0.15), fill(c), noStroke(), circle(x, H * 0.82, r * 0.5)],
+    [alpha(0.6 + eased * 0.4), fill(c), noStroke(), circle(x, y, r)],
+  ])
+
 render(
   bg('#0a0a1a'),
-  table({i: [0, 7]}, ({i}) => {
-    const bar = $bars[i]
-    const x = spacing * (i + 1)
-    const eased = bar.active ? bar.ease(easings[i]) : 0
-    const y = lerp(H * 0.82, H * 0.18, eased)
-    const r = 12 + eased * 18
-    const c = Color.viridis(i / 8)
-    return [
-      [alpha(0.2 + eased * 0.15), fill(c), noStroke(), circle(x, H * 0.82, r * 0.5)],
-      [alpha(0.6 + eased * 0.4), fill(c), noStroke(), circle(x, y, r)],
-    ]
-  }),
+  beats,
   stroke('#333'), lineWidth(1), noFill(),
   line(spacing * 0.5, H * 0.85, W - spacing * 0.5, H * 0.85),
 )
@@ -290,34 +297,38 @@ const b = Color.auto(3)
 const ringR = min(W, H) * 0.25
 const ringY = H * 0.78
 
-render(
-  bg('#0a0a1a'),
+// Palette swatches — index space mapped to position + beat pulse
+const swatches = subdivide({i: n})
+  .mapWith(({i}) => {
+    const beat = $beats[i % 8]
+    return {
+      x: W / 2 - (n * (sz + gap)) / 2 + i * (sz + gap) + sz/2,
+      pulse: beat.active ? beat.ease("outElastic") : 0,
+    }
+  })
+  .map(({i, x, pulse}) => [
+    fill(Color.auto(i)), noStroke(),
+    circle(x, H * 0.15, sz/2 * (0.8 + 0.4 * pulse)),
+  ])
 
-  // Palette swatches
-  table({i: [0, n - 1]}, ({i}) => {
-    const x = W / 2 - (n * (sz + gap)) / 2 + i * (sz + gap)
-    const bar = $bars[i % 8]
-    const pulse = bar.active ? bar.ease("outElastic") : 0
-    return [
-      fill(Color.auto(i)), noStroke(),
-      circle(x + sz/2, H * 0.15, sz/2 * (0.8 + 0.4 * pulse)),
-    ]
-  }),
+// Color mixing — [0, 1] space mapped to blended colors
+const mixing = subdivide({s: {from: 0, to: 1, size: 11}})
+  .map(({s}) => [
+    fill(a.mix(b, s)), noStroke(),
+    rect(cx - 200 + s * 400, cy, 35, 35),
+  ])
 
-  // Color mixing demo
-  table({i: [0, 10]}, ({i}) => {
-    const mixed = a.mix(b, i / 10)
-    return [fill(mixed), noStroke(), rect(cx - 200 + i * 40, cy, 35, 35)]
-  }),
+// Rainbow ring — [0, 1) space mapped to angle, then to position
+const rainbow = subdivide({i: 60})
+  .mapWith(({i}) => ({
+    s: i / 60,
+    angle: (i / 60) * TWO_PI + t * 0.5,
+  }))
+  .map(({s, angle}) => [
+    fill(Color.rainbow(s)), noStroke(),
+    circle(cx + cos(angle) * ringR, ringY + sin(angle) * ringR * 0.4, 8),
+  ])
 
-  // Rainbow ring
-  table({i: [0, 59]}, ({i}) => {
-    const angle = (i / 60) * TWO_PI + t * 0.5
-    return [
-      fill(Color.rainbow(i / 60)), noStroke(),
-      circle(cx + cos(angle) * ringR, ringY + sin(angle) * ringR * 0.4, 8),
-    ]
-  }),
-)
+render(bg('#0a0a1a'), swatches, mixing, rainbow)
 `,
 };

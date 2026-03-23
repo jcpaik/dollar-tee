@@ -2,7 +2,7 @@
 // Everything here is injected into user code as top-level names.
 
 import { Color } from './color.js';
-import { $loop, $beat, $bars, tween } from './intervals.js';
+import { $loop, $beat, $beats, tween } from './intervals.js';
 import { vec2 } from './vec.js';
 import { complex } from './complex.js';
 import { probe } from './probe.js';
@@ -146,6 +146,56 @@ function table(spec, fn) {
 
   recurse(0, {});
   return items;
+}
+
+// ── subdivide() — parameter space for functional chaining ────────
+// subdivide({t: {from: 0, to: 1, size: 60}})  → 60 values from 0 to 1
+// subdivide({i: 8})                            → 8 integers: 0, 1, ..., 7
+// subdivide({x: {from: 0, to: 100, step: 10}}) → 0, 10, 20, ..., 100
+// Returns array with .mapWith() for chaining: adds fields without losing existing ones.
+
+function _attachMapWith(arr) {
+  arr.mapWith = function(fn) {
+    return _attachMapWith(this.map(el => ({...el, ...fn(el)})));
+  };
+  return arr;
+}
+
+function subdivide(spec) {
+  const keys = Object.keys(spec);
+  const ranges = keys.map(k => {
+    const v = spec[k];
+    if (typeof v === 'number') {
+      return { from: 0, count: v, step: 1 };
+    }
+    const from = v.from ?? 0;
+    const to = v.to ?? 1;
+    if (v.step != null) {
+      const count = Math.floor(Math.abs(to - from) / Math.abs(v.step)) + 1;
+      return { from, count, step: v.step };
+    }
+    const count = v.size ?? (Math.round(Math.abs(to - from)) + 1);
+    const step = count <= 1 ? 0 : (to - from) / (count - 1);
+    return { from, count, step };
+  });
+
+  const items = [];
+
+  function recurse(depth, obj) {
+    if (depth === keys.length) {
+      items.push({...obj});
+      return;
+    }
+    const key = keys[depth];
+    const { from, count, step } = ranges[depth];
+    for (let i = 0; i < count; i++) {
+      obj[key] = from + step * i;
+      recurse(depth + 1, obj);
+    }
+  }
+
+  recurse(0, {});
+  return _attachMapWith(items);
 }
 
 // ── 3D Array Helpers ─────────────────────────────────────────────
@@ -293,16 +343,16 @@ export const stdlib = {
   Color,
 
   // Intervals
-  $loop, $beat, $bars,
-  $bar1: $bars[0], $bar2: $bars[1], $bar3: $bars[2], $bar4: $bars[3],
-  $bar5: $bars[4], $bar6: $bars[5], $bar7: $bars[6], $bar8: $bars[7],
+  $loop, $beat, $beats,
+  $beat1: $beats[0], $beat2: $beats[1], $beat3: $beats[2], $beat4: $beats[3],
+  $beat5: $beats[4], $beat6: $beats[5], $beat7: $beats[6], $beat8: $beats[7],
   tween,
 
   // Vector & Complex
   vec2, complex,
 
   // Helpers
-  val, make3D, draw, table, probe,
+  val, make3D, draw, table, subdivide, probe,
 
   // Math builtins
   PI: Math.PI, TWO_PI: Math.PI * 2, HALF_PI: Math.PI / 2,

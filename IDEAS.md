@@ -260,17 +260,65 @@ point mid-track, hear it loop back to cue. Visual `$t` matches audio time.
 
 ---
 
-## 10. Advanced Hot-Reload
+## 10. Stateful Variables — `$$` / `@` Prefix
 
-- Stateful hot-reload — preserve user state across code swaps.
-  User declares state with `state({key: defaultValue})`, host persists it.
+### The problem
+
+`draw(ctx, t, W, H)` is pure — no frame-to-frame memory. Can't do particles, trails, physics, accumulators, or anything that builds on previous state.
+
+### The `$`-prefix family
+
+- `$foo` — reactive, external, read-only (time, beats, intervals, UI controls)
+- `$$foo` (or `@foo`) — stateful, user-owned, read-write, persists across frames **and edits**
+
+`$` = system-injected, time-derived. `$$`/`@` = user-owned persistent state. Different beast, needs a distinct prefix.
+
+### Prefix candidates
+
+- **`$$`** — stays in `$`-family, visually distinct, easy to type. "Double-dollar = this sticks around."
+- **`@`** — fresh symbol, not used in JS. Cleaner to read (`@particles` vs `$$particles`). Needs compiler sugar either way — same implementation cost.
+- `$_`, `_`, no prefix — rejected (ugly, overloaded, or no visual signal).
+
+**Going with `$$` for now. `@` is a strong alternative** — may switch later. Both need the same compiler rewrite (`$$foo` or `@foo` → `__state__["foo"]`).
+
+### Design decisions
+
+- **Persists across recompiles.** Externalized state (a backing object on the engine), not closure. Edit your draw code, `$$particles` keeps its data.
+- **No declaration needed.** Just use `$$foo` and it exists. Implicit init. Compiler rewrites to a backing store.
+- **Scope TBD.** Per-sketch or global? Per-sketch feels right but decide later.
+- **Implementation cost is near-zero.** One object property lookup per access. Compiler sugar is a simple string rewrite before `new Function()`.
+
+### Clearing state — two levels
+
+- **`clear($$foo)`** — reset a single variable. Safe, surgical. "Restart this particle system."
+- **`clearAll()`** — nuke all `$$` state. Dangerous. Needs confirmation or a deliberate keyboard shortcut.
+
+Both needed. Selective clear is the everyday tool. Full wipe is the emergency button.
+
+### Example
+
+```js
+$$particles = $$particles || []
+$$particles.push({x: rand() * W, y: rand() * H})
+
+if ($$particles.length > 500) $$particles.shift()
+
+render(
+  ...$$particles.map(p => circle(p.x, p.y, 3))
+)
+```
+
+---
+
+## 11. Advanced Hot-Reload
+
 - Diff-based recompile — only re-eval changed code (AST diffing)
 - MIDI/OSC input mapping for live performance
 - Audio-reactive mode (FFT input as stdlib variable)
 
 ---
 
-## 11. CC Agent Skills
+## 12. CC Agent Skills
 
 - Build custom Claude Code skills for this project's workflow:
   - `/dump` — append raw idea to UNHINGED.md
@@ -278,6 +326,44 @@ point mid-track, hear it loop back to cue. Visual `$t` matches audio time.
   - `/plan` — generate PLAN.md from TODO.md
   - `/next` — pick items from IDEAS into TODO
 - Skill definitions live in the project, not global config.
+
+---
+
+## 13. Rename $bar → $beat and Add .n / .t Properties
+
+### The Problem
+
+`$bar1`–`$bar8` each span one `BEAT_DURATION` — they're beat-length intervals
+called "bars." Musically wrong. One bar contains multiple beats.
+
+### Rename
+
+| Current | New | What it is |
+|---------|-----|------------|
+| `$bar1`–`$bar8` | `$beat1`–`$beat8` | Fixed intervals for each beat position in the loop |
+| `$bars[]` | `$beats[]` | Array of the above |
+| `$beat` (cycling) | `$beat` | Always-active interval tracking the current beat cycle |
+
+`$beat` as the cycling interval and `$beat1`–`$beat8` as named positions coexist:
+`$beat` = "whichever beat is happening now", `$beat3` = "the 3rd beat slot in the loop."
+
+### New Properties: `.n` and `.t`
+
+**`$beat1.n`** — integer count of how many times this beat has occurred.
+`floor(totalElapsed / LOOP_DURATION)` (since each beat fires once per loop).
+Use case: `$beat1.n % 2` for alternating visuals every other loop.
+
+**`$beat1.t`** — time elapsed since the start of the current occurrence (when active).
+`loopT - $beat1.s` clamped to `[0, len]`. Use case: manual envelope math
+without needing `.progress`.
+
+These are pure time-derived values — no frame state needed.
+
+### Open Questions
+
+- Does `$beat` (cycling) need `.n` and `.t` too? Probably yes — `$beat.n` = total
+  beats elapsed, `$beat.t` = time into the current beat.
+- `$loop.n` = total loops elapsed — same pattern, free to add.
 
 ---
 
@@ -294,4 +380,4 @@ point mid-track, hear it loop back to cue. Visual `$t` matches audio time.
 | Interval/loop functions | Medium | High | With timeline/loop |
 | CC agent skills | Low | Workflow quality-of-life | Anytime |
 | Beat/event callbacks | Hard | Amazing but needs audio | Later |
-| Stateful hot-reload | Hard | The hard problem | Later |
+| `$$`/`@` stateful variables | Medium | Particles, trails, accumulators | After core stable |

@@ -501,46 +501,23 @@ These fit cleanly into the current stateless model — derived values injected a
 
 ---
 
-## `$$` Prefix — Stateful Variables
+## Underscore Auto-Destructure — Probably Won't Do This
 
-`$` means "reactive, external, time-derived" — `$bar`, `$beat`, `$kick.s`, `$p1.x`. Injected by the system, read-only from user code's perspective.
-
-Stateful variables are different: **owned by user code**, persist across frames, mutated by the draw function. Need a distinct prefix.
-
-**Candidates considered:**
-- `$$` — double-dollar = "this sticks around." Stays in `$`-family, visually distinct, easy to type.
-- `@` — fresh symbol, not used in JS. Would need compiler sugar to rewrite. Looks clean.
-- `$_` — underscore = "private." A bit ugly.
-- `_` alone — too overloaded (JS convention for throwaway/unused).
-- No prefix (bare closure vars) — works structurally but no visual signal of what persists vs resets.
-
-**Going with `$$` for now.** Compiler sugar is OK — `$$particles` can be rewritten by the preprocessor into whatever backing storage is needed (closure var, state bag slot, etc.).
+`_ =>` as a magic parameter that auto-destructures based on free variable analysis.
 
 ```js
-$$particles = $$particles || []
-$$particles.push({x: rand() * W, y: rand() * H})
-
-// cull old ones
-if ($$particles.length > 500) $$particles.shift()
-
-render(
-  ...$$particles.map(p => circle(p.x, p.y, 3))
-)
+const a = 3
+// instead of:
+items.map(({x, z}) => x + z + a)
+// write:
+items.map(_ => x + z + a)
 ```
 
-**Design decisions:**
-- `$$` vars **persist across recompiles** (externalized state, not closure). Edit your draw code, `$$particles` keeps its data.
-- **No declaration needed** — just use `$$foo` and it exists. Implicit init. Compiler rewrites to a backing store (e.g. `__state__["foo"]`).
-- **Scope TBD** — per-sketch or global? Don't worry about it yet. Per-sketch feels right but can decide later.
-- **Implementation cost is near-zero.** One object property lookup per access. The compiler sugar is a simple rewrite pass.
+Compiler sees `x`, `z` are free (not in scope), `a` is captured (`const a = 3` above). Rewrites to `({x, z}) => x + z + a`.
 
-**Clearing `$$` state — two levels:**
-- **`clear($$foo)`** — reset a single variable. Safe, surgical. "I want to restart this particle system."
-- **`clearAll()` / wipe everything** — nuke all `$$` state. Dangerous — you lose everything. Needs confirmation or a keyboard shortcut you have to mean (not something you fat-finger).
+**"In scope" means:** stdlib names (known statically), `$`/`$$` variables (known by prefix), user declarations preceding the lambda (needs a variable collector pass).
 
-Both are needed. The selective clear is the everyday tool. The full wipe is the emergency button.
+Would work for `table()`, `.map()`, any callback. Build once in the compiler, works everywhere.
 
-**The `$`-prefix family so far:**
-- `$foo` — reactive, external, read-only (time, beats, intervals, UI controls)
-- `$$foo` — stateful, user-owned, read-write, persists across frames and edits
+**Why probably not:** requires a lightweight scope analysis pass — scanning for `const/let/var` declarations above the lambda. Not a full AST parse but more than a regex. Fragile edges around shadowing, nested blocks, same name reused. Fine for simple sketches, landmine for anything complex. Likely not worth the magic.
 

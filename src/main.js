@@ -2,17 +2,17 @@
 
 import { createEditor } from './editor.js';
 import { createEngine } from './engine.js';
+import { createP5 } from './p5init.js';
 import { createAudio } from './audio.js';
 import { createTimeline, FIRST_BEAT } from './timeline.js';
 import { compile } from './compiler.js';
-import { stdlib } from './stdlib.js';
+import { stdlib, setP5, updateReactiveState } from './stdlib.js';
 import { probe } from './probe.js';
 import { DEMOS } from './demos.js';
 import { updateLoopTime } from './intervals.js';
 
 // ── DOM refs ──
 
-const canvas      = document.getElementById('canvas');
 const editorEl    = document.getElementById('editor-container');
 const errorBar    = document.getElementById('error-bar');
 const demoSelect  = document.getElementById('demo-select');
@@ -28,9 +28,13 @@ const snapBtn        = document.getElementById('snap-btn');
 const transportEl    = document.getElementById('transport');
 const transportSash  = document.getElementById('transport-sash');
 
-// ── Engine + Audio + Timeline ──
+// ── p5 + Engine + Audio + Timeline ──
 
-const engine   = createEngine(canvas);
+const p5Instance = await createP5(document.getElementById('canvas-pane'));
+const canvas     = p5Instance.canvas;
+setP5(p5Instance);
+
+const engine   = createEngine(canvas, p5Instance);
 const audio    = createAudio();
 const timeline = createTimeline(document.getElementById('beat-grid'));
 
@@ -64,14 +68,27 @@ const editor = createEditor(editorEl);
 
 // ── Compile + swap ──
 
+// ── Stateful variables ($$) — clear/clearAll exposed to user code ──
+
+const stateStdlib = {
+  clear(key) { engine.clearState(key); },
+  clearAll() { engine.clearAll(); },
+};
+
 function run() {
   probe.clear();
   const code = editor.getCode();
   try {
-    const drawFn = compile(code, stdlib);
+    // Merge preserving getters ($t, $mouseX, etc. are getters on stdlib)
+    const allStdlib = Object.defineProperties(
+      { ...stateStdlib },
+      Object.getOwnPropertyDescriptors(stdlib)
+    );
+    const drawFn = compile(code, allStdlib, engine.getState(), p5Instance);
     // Test-run to catch immediate errors
     const ctx = engine.getCtx();
-    drawFn(ctx, engine.getTime(), canvas.width, canvas.height);
+    updateReactiveState(engine.getTime(), p5Instance.width, p5Instance.height, p5Instance);
+    drawFn(ctx);
     engine.setDraw(drawFn);
     errorBar.style.display = 'none';
   } catch (e) {
@@ -198,8 +215,7 @@ demoSelect.addEventListener('change', () => {
 
 function resize() {
   const pane = document.getElementById('canvas-pane');
-  canvas.width = pane.clientWidth;
-  canvas.height = pane.clientHeight;
+  p5Instance.resizeCanvas(pane.clientWidth, pane.clientHeight);
 }
 
 resize();

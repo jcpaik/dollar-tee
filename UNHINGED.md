@@ -13,18 +13,6 @@ Append only. No structure required. Fragments OK. Don't self-censor.
 
 ---
 
-## Workflow Meta
-
-- Pipeline: **UNHINGED → IDEAS → TODO → PLAN → Actual impl**
-- Each arrow = one Claude Code session
-- Each session works with two adjacent md files
-- This session (UNHINGED↔IDEAS): help dump raw ideas here, or port refined ones to IDEAS.md
-- **Want this to be autonomous eventually** — an **agentic pipeline** / **multi-agent orchestration**
-- Each arrow runs by itself: agent picks up one file, processes it, writes to the next, hands off
-- No idea how to do it yet. Look into: CrewAI, LangGraph, AutoGen, OpenAI Swarm
-- Or maybe just Claude Code with hooks/cron? TBD
-
----
 
 ## Timeline UI — FL Studio for Visuals
 
@@ -130,31 +118,6 @@ without needing special time semantics. TBD.
 
 ---
 
-## Collaboration Granularity Problem
-
-How do I tell the agent "do X amount of work and stop"?
-
-Problem: I ask for a feature. The agent implements the whole thing in one shot.
-That's technically correct — I asked for it. But it's too much at once. I want
-to see the intermediate steps, try things, adjust before the next piece lands.
-I'm afraid I'll need to adjust things, and now there's a whole chunk of code I
-need to understand first.
-
-But I also didn't say "stop after step 1" — so how would the agent know?
-
-Possible solutions?
-- Break the request down myself before asking? But part of the value is that
-  the agent figures out the breakdown.
-- Ask the agent to propose a plan first and let me pick which steps to do?
-- Some kind of "show me what you'd do, then I'll say go"?
-- A "step mode" — implement one piece, show me, wait for approval?
-- Use the pipeline more strictly: NEXT_MOVES = one step at a time?
-
-Core tension: I want the agent to think big (understand the full picture) but
-act small (implement one reviewable piece at a time). Think ahead, ship in
-increments.
-
----
 
 ## `val()` Inline Sliders
 
@@ -520,4 +483,59 @@ Compiler sees `x`, `z` are free (not in scope), `a` is captured (`const a = 3` a
 Would work for `table()`, `.map()`, any callback. Build once in the compiler, works everywhere.
 
 **Why probably not:** requires a lightweight scope analysis pass — scanning for `const/let/var` declarations above the lambda. Not a full AST parse but more than a regex. Fragile edges around shadowing, nested blocks, same name reused. Fine for simple sketches, landmine for anything complex. Likely not worth the magic.
+
+---
+
+## p5.js as Rendering Backend
+
+### The want
+
+Not "run p5 sketches in dollar-tee." The real desire: access p5's deep functionality — masking, blend modes, filters, `beginShape()`/`vertex()`/`bezierVertex()`, offscreen buffers (`createGraphics`), pixel manipulation, `image()`, `tint()` — without reimplementing them all by hand in the stdlib. But keep dollar-tee's declarative `render()` identity.
+
+### The idea: p5 as backend, dollar-tee as interface
+
+Use p5.js in instance mode as the rendering engine underneath `drawShape()` and `renderScene()`. Dollar-tee's API stays the same. User writes `render(fill('red'), circle(200, 200, 40))` — internally that calls `p.fill(...)`, `p.circle(...)`. The user never sees p5 unless they want to.
+
+Escape hatch is free: since p5 is already loaded, expose `p` (the p5 instance) in user code. Drop into imperative `p.blendMode(ADD)` when the declarative layer doesn't cover something yet. Gradually promote useful bits into declarative stdlib.
+
+### Gains
+
+- All of p5's drawing features for free (masks, blend modes, filters, vertex shapes, offscreen buffers, pixel ops)
+- p5 2.0 shipped April 2025 — WebGL shaders in JS, variable fonts, OKLCH. Get those without writing them
+- Escape hatch to imperative p5 when needed, declarative by default
+
+### Friction points
+
+**Coordinate/argument mismatches.** Dollar-tee uses radius, p5 uses diameter. `circle(x,y,r)` vs `p.circle(x,y,d)`. Same for `ellipse`, `arc`. `drawShape()` needs a translation layer (multiply/divide by 2). Maintainable but annoying.
+
+**Canvas ownership.** p5 instance mode creates its own canvas. Engine needs to use p5's canvas instead of creating one. p5 supports `new p5(sketch, container)` — workable but changes the init flow.
+
+**Dual state stacks.** Dollar-tee's declarative renderer tracks state (`fill`, `stroke`, etc.) in its own object. p5 also tracks state internally. Need to sync: at each `drawShape()`, push p5 state, apply dollar-tee's state, draw, pop. Otherwise state leaks.
+
+**Dependency weight.** p5.js is ~1MB minified. Currently zero runtime deps. Changes the project character from "I control everything" to "standing on p5's shoulders."
+
+**Performance.** Probably negligible — p5 instance mode is a thin wrapper over Canvas2D. One extra function call per draw op. Noise in the frame budget for 2D work.
+
+### Open question
+
+Do we need p5 now, or is this future insurance? Many p5 features are just nicer names for Canvas2D primitives we already have access to (`globalCompositeOperation` = blend modes, `clip()` = masking, `filter` = CSS filters). Could cherry-pick instead of taking the whole dependency.
+
+### Capitalized names solve the collision
+
+Influenced by Mathematica: **capitalize the declarative API**.
+
+- `Circle(x, y, r)` → returns descriptor (dollar-tee's declarative identity)
+- `circle(x, y, d)` → p5 imperative, draws immediately
+
+Same for `Rect`/`rect`, `Fill`/`fill`, `Stroke`/`stroke`, `Line`/`line`, `Text`/`text`, etc.
+
+**Zero collision.** Different case, different paradigm, both available in the same sketch. No translation layer for arguments — `Circle` uses dollar-tee's conventions (radius), `circle` uses p5's (diameter). Each API owns its own semantics.
+
+**Pitch to p5 users:** "Your code already works. When you want declarative composition, capitalize." One-word migration path.
+
+**Pitch to dollar-tee users:** `render(Fill('red'), Circle(200, 200, 40))` — Mathematica-flavored, visually distinct from imperative code. You can mix both styles in one sketch.
+
+### Relationship to P5JS_COMPARISON.md
+
+That doc asks "should dollar-tee become a p5 library?" — the reverse direction. This idea is: p5 becomes dollar-tee's engine. Different question, complementary answers.
 

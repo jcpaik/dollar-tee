@@ -57,15 +57,22 @@ function transformProbe(code) {
   return out.join('');
 }
 
-export function compile(code, stdlib) {
+// $$foo → __state__["foo"]  — rewrite stateful variable references
+function transformState(code) {
+  return code.replace(/\$\$([a-zA-Z_][a-zA-Z0-9_]*)/g, '__state__["$1"]');
+}
+
+export function compile(code, stdlib, state, p5Instance) {
   const names = Object.keys(stdlib);
   // Inject render() as a local that captures ctx at call time
-  const wrapped = 'const render = (...items) => __renderScene__(ctx, items);\n' + transformProbe(code);
-  const fn = new Function('ctx', 't', 'W', 'H', '__renderScene__', ...names, wrapped);
-  const values = Object.values(stdlib);
+  const transformed = transformState(transformProbe(code));
+  const wrapped = 'const render = (...items) => __renderScene__(ctx, items);\n' + transformed;
+  const fn = new Function('ctx', '__renderScene__', '__state__', 'p', ...names, wrapped);
 
-  return (ctx, t, W, H) => {
-    const result = fn(ctx, t, W, H, renderScene, ...values);
+  return (ctx) => {
+    // Re-evaluate stdlib values each frame so reactive getters ($t, $mouseX, etc.) are current
+    const values = Object.values(stdlib);
+    const result = fn(ctx, renderScene, state, p5Instance, ...values);
     // Backward compat: return [...] still renders
     if (Array.isArray(result)) {
       renderScene(ctx, result);

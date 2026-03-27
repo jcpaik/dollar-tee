@@ -1,5 +1,6 @@
 // Standard library — shapes, directives, math, rendering.
 // Everything here is injected into user code as top-level names.
+// drawShape() uses the p5 instance for rendering when available.
 
 import { Color } from './color.js';
 import { $loop, $beat, $beats, tween } from './intervals.js';
@@ -21,6 +22,21 @@ import {
   cubicBezier,
   spring,
 } from './easing.js';
+
+// ── p5 instance (set once during init) ────────────────────────────
+let _p5 = null;
+export function setP5(p) { _p5 = p; }
+
+// ── Reactive globals (updated each frame by the engine) ──────────
+let _reactiveState = { $t: 0, $width: 0, $height: 0, $mouseX: 0, $mouseY: 0 };
+
+export function updateReactiveState(t, W, H, p) {
+  _reactiveState.$t = t;
+  _reactiveState.$width = W;
+  _reactiveState.$height = H;
+  _reactiveState.$mouseX = p ? p.mouseX : 0;
+  _reactiveState.$mouseY = p ? p.mouseY : 0;
+}
 
 // ── Math ──────────────────────────────────────────────────────────
 
@@ -62,21 +78,30 @@ function noise2(x, y) {
 
 // ── Shape Constructors (return descriptor objects) ────────────────
 
-function circle(x, y, r) { return { type: 'circle', x, y, r }; }
-function line(x1, y1, x2, y2) { return { type: 'line', x1, y1, x2, y2 }; }
-function rect(x, y, w, h) { return { type: 'rect', x, y, w, h }; }
-function polygon(pts) { return { type: 'polygon', pts }; }
-function ngon(x, y, r, n, angle = 0) {
+function Circle(x, y, r) { return { type: 'circle', x, y, r }; }
+function Line(x1, y1, x2, y2) { return { type: 'line', x1, y1, x2, y2 }; }
+function Rect(x, y, w, h) { return { type: 'rect', x, y, w, h }; }
+function Polygon(pts) { return { type: 'polygon', pts }; }
+function Ngon(x, y, r, n, angle = 0) {
   const pts = [];
   for (let i = 0; i < n; i++) {
     const a = angle + (i / n) * Math.PI * 2;
     pts.push([x + Math.cos(a) * r, y + Math.sin(a) * r]);
   }
-  return polygon(pts);
+  return Polygon(pts);
 }
-function arc(x, y, r, start, end) { return { type: 'arc', x, y, r, start, end }; }
-function ellipse(x, y, rx, ry) { return { type: 'ellipse', x, y, rx, ry }; }
-function text(str, x, y, size) { return { type: 'text', str, x, y, size: size || 16 }; }
+function Arc(x, y, r, start, end) { return { type: 'arc', x, y, r, start, end }; }
+function Ellipse(x, y, rx, ry) { return { type: 'ellipse', x, y, rx, ry }; }
+function Text(str, x, y, size) { return { type: 'text', str, x, y, size: size || 16 }; }
+function Shape(points, close = true) { return { type: 'shape', points, close }; }
+function BezierShape(points) { return { type: 'bezierShape', points }; }
+function Bezier(x1, y1, cx1, cy1, cx2, cy2, x2, y2) {
+  return { type: 'bezier', x1, y1, cx1, cy1, cx2, cy2, x2, y2 };
+}
+function QuadCurve(x1, y1, cx, cy, x2, y2) {
+  return { type: 'quadCurve', x1, y1, cx, cy, x2, y2 };
+}
+function ImageShape(img, x, y, w, h) { return { type: 'image', img, x, y, w, h }; }
 
 // ── Style Directives ─────────────────────────────────────────────
 // These go into the scene array alongside shapes.
@@ -88,14 +113,39 @@ function resolveColor(c) {
   return c;
 }
 
-function fill(color)    { return { _dir: true, prop: 'fill',      value: resolveColor(color) }; }
-function stroke(color)  { return { _dir: true, prop: 'stroke',    value: resolveColor(color) }; }
-function lineWidth(w)   { return { _dir: true, prop: 'lineWidth', value: w }; }
-function noFill()       { return { _dir: true, prop: 'fill',      value: null }; }
-function noStroke()     { return { _dir: true, prop: 'stroke',    value: null }; }
-function bg(color)      { return { _dir: true, action: 'bg',      value: resolveColor(color) }; }
-function font(f)        { return { _dir: true, prop: 'font',      value: f }; }
-function alpha(a)       { return { _dir: true, prop: 'globalAlpha', value: a }; }
+function Fill(color)    { return { _dir: true, prop: 'fill',      value: resolveColor(color) }; }
+function Stroke(color)  { return { _dir: true, prop: 'stroke',    value: resolveColor(color) }; }
+function LineWidth(w)   { return { _dir: true, prop: 'lineWidth', value: w }; }
+function NoFill()       { return { _dir: true, prop: 'fill',      value: null }; }
+function NoStroke()     { return { _dir: true, prop: 'stroke',    value: null }; }
+function Bg(color)      { return { _dir: true, action: 'bg',      value: resolveColor(color) }; }
+function Font(f)        { return { _dir: true, prop: 'font',      value: f }; }
+function Alpha(a)       { return { _dir: true, prop: 'globalAlpha', value: a }; }
+
+// Transform directives
+function Translate(x, y) { return { _dir: true, action: 'translate', x, y }; }
+function Rotate(angle)    { return { _dir: true, action: 'rotate', angle }; }
+function Scale(x, y)      { if (y === undefined) y = x; return { _dir: true, action: 'scale', x, y }; }
+
+// Style directives
+function StrokeCap(cap)     { return { _dir: true, action: 'strokeCap', value: cap }; }
+function StrokeJoin(join)    { return { _dir: true, action: 'strokeJoin', value: join }; }
+function BlendMode(mode)     { return { _dir: true, action: 'blendMode', value: mode }; }
+function RectMode(mode)      { return { _dir: true, action: 'rectMode', value: mode }; }
+function EllipseMode(mode)   { return { _dir: true, action: 'ellipseMode', value: mode }; }
+
+// Typography directives
+function TextSize(size)       { return { _dir: true, prop: 'textSize', value: size }; }
+function TextAlign(h, v)      { return { _dir: true, action: 'textAlign', h, v }; }
+function TextFont(font)       { return { _dir: true, prop: 'textFont', value: font }; }
+function TextStyle(style)     { return { _dir: true, action: 'textStyle', value: style }; }
+
+// Image & tint directives
+function Tint(color)    { return { _dir: true, action: 'tint', value: color }; }
+function NoTint()       { return { _dir: true, action: 'noTint' }; }
+
+// Filter directive
+function Filter(type, param) { return { _dir: true, action: 'filter', type, param }; }
 
 // ── val() — identity for now, future: CodeMirror slider widget ───
 
@@ -221,17 +271,21 @@ const DEFAULT_STATE = {
   fill: '#ffffff',
   stroke: null,
   lineWidth: 1,
-  font: '16px monospace',
+  font: null,
   globalAlpha: 1,
+  textSize: null,
+  textFont: null,
 };
 
 export function renderScene(ctx, items, state) {
   if (!state) state = { ...DEFAULT_STATE };
 
   for (const item of items) {
-    // Nested array → group with scoped state
+    // Nested array → group with scoped state + push/pop transforms
     if (Array.isArray(item)) {
+      if (_p5) _p5.push();
       renderScene(ctx, item, { ...state });
+      if (_p5) _p5.pop();
       continue;
     }
 
@@ -244,9 +298,50 @@ export function renderScene(ctx, items, state) {
     // Directive
     if (item?._dir) {
       if (item.action === 'bg') {
-        ctx.fillStyle = item.value;
-        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-      } else {
+        if (_p5) {
+          _p5.background(item.value);
+        } else {
+          ctx.fillStyle = item.value;
+          ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        }
+        continue;
+      }
+      // Transform actions
+      if (item.action === 'translate') { if (_p5) _p5.translate(item.x, item.y); continue; }
+      if (item.action === 'rotate')    { if (_p5) _p5.rotate(item.angle); continue; }
+      if (item.action === 'scale')     { if (_p5) _p5.scale(item.x, item.y); continue; }
+      // Style actions
+      if (item.action === 'strokeCap')   { if (_p5) _p5.strokeCap(item.value); continue; }
+      if (item.action === 'strokeJoin')  { if (_p5) _p5.strokeJoin(item.value); continue; }
+      if (item.action === 'blendMode') {
+        if (_p5) {
+          const mode = typeof item.value === 'string' ? _p5[item.value.toUpperCase()] || item.value : item.value;
+          _p5.blendMode(mode);
+        }
+        continue;
+      }
+      if (item.action === 'rectMode')    { if (_p5) _p5.rectMode(item.value); continue; }
+      if (item.action === 'ellipseMode') { if (_p5) _p5.ellipseMode(item.value); continue; }
+      // Typography actions
+      if (item.action === 'textAlign')  { if (_p5) _p5.textAlign(item.h, item.v); continue; }
+      if (item.action === 'textStyle')  { if (_p5) _p5.textStyle(item.value); continue; }
+      // Image actions
+      if (item.action === 'tint')   { if (_p5) _p5.tint(item.value); continue; }
+      if (item.action === 'noTint') { if (_p5) _p5.noTint(); continue; }
+      // Filter action
+      if (item.action === 'filter') {
+        if (_p5) {
+          const filterType = typeof item.type === 'string' ? _p5[item.type.toUpperCase()] || item.type : item.type;
+          if (item.param !== undefined) {
+            _p5.filter(filterType, item.param);
+          } else {
+            _p5.filter(filterType);
+          }
+        }
+        continue;
+      }
+      // Property-based directives (fill, stroke, lineWidth, font, globalAlpha, textSize, textFont)
+      if (item.prop) {
         state[item.prop] = item.value;
       }
       continue;
@@ -260,6 +355,116 @@ export function renderScene(ctx, items, state) {
 }
 
 function drawShape(ctx, shape, state) {
+  if (!_p5) {
+    // Fallback to raw Canvas2D if p5 not initialized
+    drawShapeCanvas(ctx, shape, state);
+    return;
+  }
+
+  const p = _p5;
+
+  // Save and apply alpha manually (no push/pop — transforms are scoped by renderScene)
+  const prevAlpha = p.drawingContext.globalAlpha;
+  if (state.globalAlpha !== 1) {
+    p.drawingContext.globalAlpha = state.globalAlpha;
+  }
+
+  // Apply fill
+  if (state.fill) {
+    p.fill(state.fill);
+  } else {
+    p.noFill();
+  }
+
+  // Apply stroke
+  if (state.stroke) {
+    p.stroke(state.stroke);
+    p.strokeWeight(state.lineWidth || 1);
+  } else {
+    p.noStroke();
+  }
+
+  // Draw shape using p5 methods
+  switch (shape.type) {
+    case 'circle':
+      p.circle(shape.x, shape.y, Math.max(0, shape.r) * 2);  // p5 uses diameter
+      break;
+    case 'rect':
+      p.rect(shape.x, shape.y, shape.w, shape.h);
+      break;
+    case 'line':
+      p.line(shape.x1, shape.y1, shape.x2, shape.y2);
+      break;
+    case 'ellipse':
+      p.ellipse(shape.x, shape.y, Math.max(0, shape.rx) * 2, Math.max(0, shape.ry) * 2);  // p5 uses diameters
+      break;
+    case 'arc':
+      p.arc(shape.x, shape.y, Math.max(0, shape.r) * 2, Math.max(0, shape.r) * 2, shape.start, shape.end);
+      break;
+    case 'polygon':
+      if (!shape.pts || shape.pts.length < 2) { p.drawingContext.globalAlpha = prevAlpha; return; }
+      p.beginShape();
+      for (const pt of shape.pts) p.vertex(pt[0], pt[1]);
+      p.endShape(p.CLOSE);
+      break;
+    case 'shape':
+      p.beginShape();
+      for (const pt of shape.points) p.vertex(pt[0], pt[1]);
+      p.endShape(shape.close ? p.CLOSE : undefined);
+      break;
+    case 'bezierShape':
+      // points: [[x,y], [cx1,cy1,cx2,cy2,x,y], ...]
+      // First point is moveTo, rest are bezier segments
+      p.beginShape();
+      p.vertex(shape.points[0][0], shape.points[0][1]);
+      for (let i = 1; i < shape.points.length; i++) {
+        const pt = shape.points[i];
+        p.bezierVertex(pt[0], pt[1], pt[2], pt[3], pt[4], pt[5]);
+      }
+      p.endShape();
+      break;
+    case 'bezier':
+      p.bezier(shape.x1, shape.y1, shape.cx1, shape.cy1, shape.cx2, shape.cy2, shape.x2, shape.y2);
+      break;
+    case 'quadCurve':
+      // p5 doesn't have a direct quadratic bezier draw function, use beginShape
+      p.beginShape();
+      p.vertex(shape.x1, shape.y1);
+      p.quadraticVertex(shape.cx, shape.cy, shape.x2, shape.y2);
+      p.endShape();
+      break;
+    case 'image':
+      if (shape.w !== undefined && shape.h !== undefined) {
+        p.image(shape.img, shape.x, shape.y, shape.w, shape.h);
+      } else {
+        p.image(shape.img, shape.x, shape.y);
+      }
+      break;
+    case 'text': {
+      // Priority: TextSize()/TextFont() > Font('12px monospace') > shape defaults
+      if (state.textSize) {
+        p.textSize(state.textSize);
+        p.textFont(state.textFont || 'monospace');
+      } else {
+        // Parse legacy Font() CSS string, or fall back to shape.size
+        const fontStr = state.font || `${shape.size || 16}px monospace`;
+        const sizeMatch = fontStr.match(/(\d+)px/);
+        if (sizeMatch) p.textSize(parseInt(sizeMatch[1]));
+        const familyMatch = fontStr.match(/\d+px\s+(.+)/);
+        if (familyMatch) p.textFont(familyMatch[1]);
+        else p.textFont('monospace');
+      }
+      p.text(shape.str, shape.x, shape.y);
+      break;
+    }
+  }
+
+  // Restore alpha
+  p.drawingContext.globalAlpha = prevAlpha;
+}
+
+// Canvas2D fallback — preserved for when p5 is not available
+function drawShapeCanvas(ctx, shape, state) {
   ctx.save();
   ctx.globalAlpha = state.globalAlpha;
   ctx.beginPath();
@@ -315,6 +520,13 @@ function draw(ctx, items) { renderScene(ctx, items); }
 // ── Export everything as a flat object ────────────────────────────
 
 export const stdlib = {
+  // Reactive globals (getters → always current)
+  get $t() { return _reactiveState.$t; },
+  get $width() { return _reactiveState.$width; },
+  get $height() { return _reactiveState.$height; },
+  get $mouseX() { return _reactiveState.$mouseX; },
+  get $mouseY() { return _reactiveState.$mouseY; },
+
   // Math
   If, lerp, clamp, map,
   ease, noise, noise2,
@@ -334,10 +546,16 @@ export const stdlib = {
   cubicBezier, spring,
 
   // Shapes
-  circle, line, rect, polygon, ngon, arc, ellipse, text,
+  Circle, Line, Rect, Polygon, Ngon, Arc, Ellipse, Text,
+  Shape, BezierShape, Bezier, QuadCurve,
+  Image: ImageShape,
 
   // Directives
-  fill, stroke, lineWidth, noFill, noStroke, bg, font, alpha,
+  Fill, Stroke, LineWidth, NoFill, NoStroke, Bg, Font, Alpha,
+  Translate, Rotate, Scale,
+  StrokeCap, StrokeJoin, BlendMode, RectMode, EllipseMode,
+  TextSize, TextAlign, TextFont, TextStyle,
+  Tint, NoTint, Filter,
 
   // Color
   Color,

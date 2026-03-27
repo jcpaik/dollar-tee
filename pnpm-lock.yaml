@@ -23,6 +23,9 @@ importers:
       codemirror:
         specifier: ^6.0.2
         version: 6.0.2
+      p5:
+        specifier: ^1.11.3
+        version: 1.11.11
     devDependencies:
       vite:
         specifier: ^8.0.1
@@ -290,6 +293,9 @@ packages:
     resolution: {integrity: sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
+
+  p5@1.11.11:
+    resolution: {integrity: sha512-k58mfexvavFb+KNRpi70PbkKE2gCNiWQkzS4kVOyC2F9SKGgYy1jSO+JXZ24ikXV9OvZIAxGusiSVWEijYrmNg==}
 
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
@@ -600,6 +606,8 @@ snapshots:
       lightningcss-win32-x64-msvc: 1.32.0
 
   nanoid@3.3.11: {}
+
+  p5@1.11.11: {}
 
   picocolors@1.1.1: {}
 

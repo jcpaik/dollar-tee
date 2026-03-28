@@ -40,4 +40,4 @@ const rainbow = table({i: 60})
     Circle(cx + cos(angle) * ringR, ringY + sin(angle) * ringR * 0.4, 8),
   ])
 
-render(Bg('#0a0a1a'), swatches, mixing, rainbow)
+render(Background('#0a0a1a'), swatches, mixing, rainbow)

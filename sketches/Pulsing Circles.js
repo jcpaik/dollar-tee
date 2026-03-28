@@ -9,4 +9,4 @@ const circles = table({i: {from: 12, to: 0, n: 13}})
     Circle($width/2, $height/2, lerp(20, min($width,$height) * 0.45, i / 12) * (0.7 + 0.3 * pulse)),
   ])
 
-render(Bg('#0a0a1a'), circles)
+render(Background('#0a0a1a'), circles)

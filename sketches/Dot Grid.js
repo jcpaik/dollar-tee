@@ -19,4 +19,4 @@ const dots = table({
     Circle(x, y, 8 + pulse * 12),
   ])
 
-render(Bg('#0a0a1a'), Fill('#333'), NoStroke(), ngons, dots)
+render(Background('#0a0a1a'), Fill('#333'), NoStroke(), ngons, dots)

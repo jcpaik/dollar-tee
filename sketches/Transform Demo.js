@@ -1,5 +1,5 @@
 // Transforms scoped by nested arrays
-render(Bg('#0a0a1a'))
+render(Background('#0a0a1a'))
 
 // Center of canvas
 const cx = $width / 2, cy = $height / 2

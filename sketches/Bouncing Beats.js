@@ -24,7 +24,7 @@ const beats = table({i: 8})
   ])
 
 render(
-  Bg('#0a0a1a'),
+  Background('#0a0a1a'),
   beats,
   Stroke('#333'), LineWidth(1), NoFill(),
   Line(spacing * 0.5, $height * 0.85, $width - spacing * 0.5, $height * 0.85),

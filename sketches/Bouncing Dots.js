@@ -16,4 +16,4 @@ const dots = easings.map((fn, i) => {
   ]
 })
 
-render(Bg('#0a0a1a'), dots)
+render(Background('#0a0a1a'), dots)

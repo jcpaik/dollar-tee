@@ -17,4 +17,4 @@ const waves = table({j: 40, i: 80})
     Line(x, y, xNext, yNext),
   ])
 
-render(Bg('#0a0a1a'), waves)
+render(Background('#0a0a1a'), waves)

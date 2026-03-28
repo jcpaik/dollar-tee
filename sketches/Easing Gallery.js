@@ -42,4 +42,4 @@ const gallery = easings.map(([name, fn], idx) => {
   ]
 })
 
-render(Bg('#0a0a1a'), gallery)
+render(Background('#0a0a1a'), gallery)

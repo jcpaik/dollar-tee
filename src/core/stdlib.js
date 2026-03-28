@@ -137,7 +137,7 @@ function Stroke(color)  { return { _dir: true, prop: 'stroke',    value: resolve
 function LineWidth(w)   { return { _dir: true, prop: 'lineWidth', value: w }; }
 function NoFill()       { return { _dir: true, prop: 'fill',      value: null }; }
 function NoStroke()     { return { _dir: true, prop: 'stroke',    value: null }; }
-function Bg(color)      { return { _dir: true, action: 'bg',      value: resolveColor(color) }; }
+function Background(color) { return { _dir: true, action: 'bg',      value: resolveColor(color) }; }
 function Font(f)        { return { _dir: true, prop: 'font',      value: f }; }
 function Alpha(a)       { return { _dir: true, prop: 'globalAlpha', value: a }; }
 
@@ -331,7 +331,7 @@ export const stdlib = {
   Image: ImageShape,
 
   // Directives
-  Fill, Stroke, LineWidth, NoFill, NoStroke, Bg, Font, Alpha,
+  Fill, Stroke, LineWidth, NoFill, NoStroke, Background, Font, Alpha,
   Translate, Rotate, Scale,
   StrokeCap, StrokeJoin, BlendMode, RectMode, EllipseMode,
   TextSize, TextAlign, TextFont, TextStyle,

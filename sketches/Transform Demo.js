@@ -5,7 +5,7 @@ render(Background('#0a0a1a'))
 const cx = $width / 2, cy = $height / 2
 
 // Orbiting groups of shapes — each group is rotated
-const groups = table({i: 6})
+const groups = range({i: 6})
   .map(({i}) => {
     const angle = (i / 6) * TWO_PI + $time * 0.5
     return [

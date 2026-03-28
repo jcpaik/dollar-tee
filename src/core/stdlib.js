@@ -180,15 +180,20 @@ function Clip(shape, opts) { return { _dir: true, action: 'clip', shape, invert:
 
 function val(current, _min = 0, _max = 1) { return current; }
 
-// ── table() — parameter space with .mapWith() chaining ───────────
-// table({i: 10})                            → 10 integers: 0, 1, ..., 9
-// table({i: [0, 10]})                       → step 1: 0, 1, ..., 10
-// table({i: [0, 10, 3]})                    → step 3: 0, 3, 6, 9
-// table({s: {n: 41}})                       → 41 points from 0 to 1
-// table({s: {steps: 40}})                   → same (40 intervals = 41 points)
-// table({x: {to: 100, step: 10}})           → 0, 10, 20, ..., 100
-// table({i: {n: 30, step: 3}})              → 0, 3, 6, ..., 87 (30 points)
-// Defaults: from=0, to=1. Returns array with .mapWith() for chaining.
+// ── range() — unified iteration: numbers, tuples, or named objects ──
+// range(10)                              → [0, 1, ..., 9]
+// range([0, 100, 10])                    → [0, 10, ..., 100]
+// range({n: 41})                         → [0, ..., 1] (41 points)
+// range(3, 4)                            → [[0,0], [0,1], ..., [2,3]]
+// range([0, 10, 5], {from: 0, to: 6, step: 3})  → tuples
+// range({x: 10, y: 10})                  → [{x:0, y:0}, ...] with .mapWith()
+
+const _RANGE_KEYS = new Set(['from', 'to', 'n', 'steps', 'step']);
+
+function _isRangeSpec(v) {
+  return typeof v === 'object' && v !== null && !Array.isArray(v)
+    && Object.keys(v).every(k => _RANGE_KEYS.has(k));
+}
 
 function _attachMapWith(arr) {
   arr.mapWith = function(fn) {
@@ -198,81 +203,94 @@ function _attachMapWith(arr) {
 }
 
 function _parseRange(v) {
-  // Bare number: n integers from 0
   if (typeof v === 'number') {
     return { from: 0, count: v, step: 1 };
   }
-  // Array: [from, to] or [from, to, step] — always step-based
   if (Array.isArray(v)) {
     const [a, b, s] = v;
     const step = s ?? (a <= b ? 1 : -1);
     const count = Math.floor(Math.abs(b - a) / Math.abs(step)) + 1;
     return { from: a, count, step };
   }
-  // Object: {from, to, n, steps, step}
+  // Object range spec: {from, to, n, steps, step}
   const from = v.from ?? 0;
   const hasTo = v.to != null;
   const hasN = v.n != null;
   const hasSteps = v.steps != null;
   const hasStep = v.step != null;
 
-  // n + step (no to needed) → derive count from n
   if (hasN && hasStep && !hasTo) {
     return { from, count: v.n, step: v.step };
   }
-  // steps + step (no to needed)
   if (hasSteps && hasStep && !hasTo) {
     return { from, count: v.steps + 1, step: v.step };
   }
 
   const to = v.to ?? 1;
 
-  // step-based: count derived from range
   if (hasStep) {
     const count = Math.floor(Math.abs(to - from) / Math.abs(v.step)) + 1;
     return { from, count, step: v.step };
   }
-  // n: exact point count
   if (hasN) {
     const step = v.n <= 1 ? 0 : (to - from) / (v.n - 1);
     return { from, count: v.n, step };
   }
-  // steps: interval count
   if (hasSteps) {
     const count = v.steps + 1;
     const step = v.steps <= 0 ? 0 : (to - from) / v.steps;
     return { from, count, step };
   }
-  // Bare {from, to} — default to step of 1 (or -1)
   const step = from <= to ? 1 : -1;
   const count = Math.floor(Math.abs(to - from) / Math.abs(step)) + 1;
   return { from, count, step };
 }
 
-function table(spec) {
-  const keys = Object.keys(spec);
-  const ranges = keys.map(k => _parseRange(spec[k]));
-  const items = [];
-
-  function recurse(depth, obj) {
-    if (depth === keys.length) {
-      items.push({...obj});
-      return;
-    }
-    const key = keys[depth];
-    const { from, count, step } = ranges[depth];
-    for (let i = 0; i < count; i++) {
-      obj[key] = from + step * i;
-      recurse(depth + 1, obj);
-    }
-  }
-
-  recurse(0, {});
-  return _attachMapWith(items);
+function _expand(r) {
+  const { from, count, step } = r;
+  const arr = new Array(count);
+  for (let i = 0; i < count; i++) arr[i] = from + step * i;
+  return arr;
 }
 
-// Legacy alias
-const subdivide = table;
+function range(...args) {
+  // Single arg: could be unnamed range spec OR named object
+  if (args.length === 1) {
+    const arg = args[0];
+    // Named object → objects with .mapWith()
+    if (typeof arg === 'object' && arg !== null && !Array.isArray(arg) && !_isRangeSpec(arg)) {
+      const keys = Object.keys(arg);
+      const ranges = keys.map(k => _parseRange(arg[k]));
+      const items = [];
+      function recurse(depth, obj) {
+        if (depth === keys.length) { items.push({...obj}); return; }
+        const key = keys[depth];
+        const { from, count, step } = ranges[depth];
+        for (let i = 0; i < count; i++) {
+          obj[key] = from + step * i;
+          recurse(depth + 1, obj);
+        }
+      }
+      recurse(0, {});
+      return _attachMapWith(items);
+    }
+    // Unnamed single range → plain numbers
+    return _expand(_parseRange(arg));
+  }
+
+  // Multiple args: each is an unnamed range spec → tuples
+  const expanded = args.map(a => _expand(_parseRange(a)));
+  const items = [];
+  function recurse(depth, tuple) {
+    if (depth === expanded.length) { items.push([...tuple]); return; }
+    for (const v of expanded[depth]) {
+      tuple[depth] = v;
+      recurse(depth + 1, tuple);
+    }
+  }
+  recurse(0, []);
+  return items;
+}
 
 // ── 3D Array Helpers ─────────────────────────────────────────────
 
@@ -350,7 +368,7 @@ export const stdlib = {
   vec2, complex,
 
   // Helpers
-  val, make3D, draw, table, subdivide, probe,
+  val, make3D, draw, range, probe,
 
   // Math builtins
   PI: Math.PI, TWO_PI: Math.PI * 2, HALF_PI: Math.PI / 2,

@@ -19,7 +19,7 @@ const gallery = easings.map(([name, fn], idx) => {
   const gw = cellW * 0.7, gh = cellH * 0.55
 
   // Points along the curve
-  const pts = table({s: {n: 41}})
+  const pts = range({s: {n: 41}})
     .mapWith(({s}) => ({
       px: ox + s * gw,
       py: oy + gh + 20 - fn(s) * gh,

@@ -1,7 +1,7 @@
 // Noise-based animated color grid
 const step = 10
 
-const colors = table({
+const colors = range({
     x: {to: $width - step, step: step},
     y: {to: $height - step, step: step},
   })

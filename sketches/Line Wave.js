@@ -1,5 +1,7 @@
 // Flowing sine wave lines
-const waves = table({j: 40, i: 80})
+
+/*
+const waves = range({j: 40, i: 80})
   .mapWith(({j, i}) => {
     const y0 = (j / 40) * $height
     const amp = sin($time * 0.5 + j * 0.2) * 30 + 20
@@ -16,5 +18,8 @@ const waves = table({j: 40, i: 80})
     LineWidth(1.5), NoFill(), StrokeCap(p.SQUARE),
     Line(x, y, xNext, yNext),
   ])
+*/
 
-render(Background('#0a0a1a'), waves)
+// render(Background('#0a0a1a'), waves)
+
+render(Background('#0a0a1a'))

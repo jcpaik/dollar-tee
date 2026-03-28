@@ -1,12 +1,12 @@
 // 2D parameter space mapped to visual properties
 // Nested Ngons from a range
-const ngons = table({i: [1, 6]})
-  .map(({i}) =>
+const ngons = range([1, 6])
+  .map(i =>
     Ngon($width/2, $height/2, min($width,$height) * 0.05 * i, 3 + i, $time * (0.5 + i * 0.1))
   )
 
-// 2D grid — table creates the position space, mapWith derives values
-const dots = table({
+// 2D grid — range creates the position space, mapWith derives values
+const dots = range({
     x: {from: $width * 0.1, to: $width * 0.82, n: 10},
     y: {from: $height * 0.1, to: $height * 0.82, n: 10},
   })

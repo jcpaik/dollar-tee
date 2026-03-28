@@ -1,18 +1,19 @@
 // Main — entry point. Wires editor, engine, and compiler together.
 
-import { createEditor } from '../editor/editor.js';
+import { createEditor } from './editor/editor.js';
 import { createEngine } from './engine.js';
 import { createP5 } from './p5init.js';
-import { createAudio } from '../audio/audio.js';
-import { createTimeline, FIRST_BEAT } from '../audio/timeline.js';
+import { createAudio } from './audio/audio.js';
+import { createTimeline, FIRST_BEAT } from './audio/timeline.js';
 import { compile } from './compiler.js';
 import { stdlib, setP5, updateReactiveState } from './stdlib.js';
 import { probe } from './probe.js';
-import { updateLoopTime } from '../audio/intervals.js';
+import { updateLoopTime } from './audio/intervals.js';
 import { fetchSketches, listSketches, getSketchCode, saveSketch } from './sketch-store.js';
 import { createSketchSelector } from './demo-selector.js';
-import { setupTransport } from './transport-ui.js';
-import { setupLocators, getLocatorGetters, syncOverlay, toggleLocators } from '../locators/main.js';
+import { setupTransport } from './audio/transport.js';
+import { setupLayout } from './ui/layout.js';
+import { setupLocators, getLocatorGetters, syncOverlay, toggleLocators } from './locators/main.js';
 
 // ── Create subsystems ──
 
@@ -115,9 +116,10 @@ function resize() {
 resize();
 window.addEventListener('resize', resize);
 
-// ── Transport ──
+// ── Layout + Transport ──
 
-setupTransport({ audio, engine, timeline, onResize: resize });
+setupLayout({ onResize: resize });
+setupTransport({ audio, engine, timeline });
 
 // ── Engine callbacks ──
 

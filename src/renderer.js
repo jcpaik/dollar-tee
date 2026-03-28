@@ -1,7 +1,7 @@
 // Renderer — walks scene array, applies directives, draws shapes.
 // Requires p5.js backend (set via setRendererP5 before first render).
 
-import { Color } from '../lib/color.js';
+import { Color } from './lib/color.js';
 
 let _p5 = null;
 export function setRendererP5(p) { _p5 = p; }

@@ -28,10 +28,10 @@ let _p5 = null;
 export function setP5(p) { _p5 = p; setRendererP5(p); }
 
 // ── Reactive globals (updated each frame by the engine) ──────────
-let _reactiveState = { $t: 0, $width: 0, $height: 0, $mouseX: 0, $mouseY: 0 };
+let _reactiveState = { $time: 0, $width: 0, $height: 0, $mouseX: 0, $mouseY: 0 };
 
 export function updateReactiveState(t, W, H, p) {
-  _reactiveState.$t = t;
+  _reactiveState.$time = t;
   _reactiveState.$width = W;
   _reactiveState.$height = H;
   _reactiveState.$mouseX = p ? p.mouseX : 0;
@@ -301,7 +301,7 @@ function draw(items) { renderScene(items); }
 
 export const stdlib = {
   // Reactive globals (getters → always current)
-  get $t() { return _reactiveState.$t; },
+  get $time() { return _reactiveState.$time; },
   get $width() { return _reactiveState.$width; },
   get $height() { return _reactiveState.$height; },
   get $mouseX() { return _reactiveState.$mouseX; },

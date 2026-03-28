@@ -7,7 +7,7 @@
 The engine runs a `requestAnimationFrame` loop — 60 calls/sec. Each frame:
 
 1. Get current time `t` (from wall clock or audio source)
-2. Update reactive state (`$t`, `$width`, `$height`, `$mouse`, etc.)
+2. Update reactive state (`$time`, `$width`, `$height`, `$mouse`, etc.)
 3. Call `drawFn()`
 4. Schedule next frame
 
@@ -25,9 +25,9 @@ render(fill('red'), circle(W/2, H/2, 100 + 50 * sin(t)))
 
 `compile()` produces (roughly):
 ```js
-function anonymous(__renderScene__, __state__, p, fill, circle, sin, $t, ...) {
+function anonymous(__renderScene__, __state__, p, fill, circle, sin, $time, ...) {
   const render = (...items) => __renderScene__(items);
-  render(fill('red'), circle($width/2, $height/2, 100 + 50 * sin($t)))
+  render(fill('red'), circle($width/2, $height/2, 100 + 50 * sin($time)))
 }
 ```
 

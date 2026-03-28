@@ -69,7 +69,7 @@ export function compile(code, stdlib, state, p5Instance) {
   const fn = new Function('__renderScene__', '__state__', 'p', ...names, wrapped);
 
   return () => {
-    // Re-evaluate stdlib values each frame so reactive getters ($t, $mouseX, etc.) are current
+    // Re-evaluate stdlib values each frame so reactive getters ($time, $mouse, etc.) are current
     const values = Object.values(stdlib);
     const result = fn(renderScene, state, p5Instance, ...values);
     // Backward compat: return [...] still renders

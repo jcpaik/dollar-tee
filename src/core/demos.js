@@ -5,7 +5,7 @@ export const DEMOS = {
 
   "Blank Canvas": `\
 // Your blank canvas — go wild!
-// Available: ctx, $t (seconds), $width, $height, $mouseX, $mouseY
+// Available: ctx, $time (seconds), $width, $height, $mouseX, $mouseY
 // Shapes:  Circle(x,y,r)  Rect(x,y,w,h)  Line(x1,y1,x2,y2)  Polygon(pts)
 //          Ngon(x,y,r,sides,angle)  Arc(x,y,r,start,end)  Ellipse(x,y,rx,ry)
 //          Shape(pts)  Bezier(x1,y1,cx1,cy1,cx2,cy2,x2,y2)  Image(img,x,y,w,h)
@@ -35,7 +35,7 @@ const circles = subdivide({i: {from: 12, to: 0, size: 13}})
     return { pulse: beat.active ? beat.ease("outCubic") : 0 }
   })
   .map(({i, pulse}) => [
-    Fill(Color.hsl($t * 30 + i * 25, 70, 40 + pulse * 20)),
+    Fill(Color.hsl($time * 30 + i * 25, 70, 40 + pulse * 20)),
     Circle($width/2, $height/2, lerp(20, min($width,$height) * 0.45, i / 12) * (0.7 + 0.3 * pulse)),
   ])
 
@@ -117,7 +117,7 @@ render(Bg('#0a0a1a'), dots)
 // Nested Ngons from a range
 const ngons = subdivide({i: {from: 1, to: 6, size: 6}})
   .map(({i}) =>
-    Ngon($width/2, $height/2, min($width,$height) * 0.05 * i, 3 + i, $t * (0.5 + i * 0.1))
+    Ngon($width/2, $height/2, min($width,$height) * 0.05 * i, 3 + i, $time * (0.5 + i * 0.1))
   )
 
 // 2D grid — subdivide creates the position space, mapWith derives values
@@ -126,10 +126,10 @@ const dots = subdivide({
     y: {from: $height * 0.1, to: $height * 0.82, size: 10},
   })
   .mapWith(({x, y}) => ({
-    pulse: easeOutCubic(abs(sin($t + x * 0.01 + y * 0.01))),
+    pulse: easeOutCubic(abs(sin($time + x * 0.01 + y * 0.01))),
   }))
   .map(({x, y, pulse}) => [
-    Fill(Color.hsl(x * 0.4 + y * 0.4 + $t * 40, 70, 40 + pulse * 25)),
+    Fill(Color.hsl(x * 0.4 + y * 0.4 + $time * 40, 70, 40 + pulse * 25)),
     NoStroke(),
     Circle(x, y, 8 + pulse * 12),
   ])
@@ -149,12 +149,12 @@ ctx.fillRect(0, 0, $width, $height)
 for (let z = 0; z < 3; z++) {
   for (let y = N - 1; y >= 0; y--) {
     for (let x = 0; x < N; x++) {
-      const wave = sin($t + x * 0.5 + y * 0.5 + z) * 0.5 + 0.5
+      const wave = sin($time + x * 0.5 + y * 0.5 + z) * 0.5 + 0.5
       if (wave < 0.3) continue
 
       const sx = $width / 2 + isoX(x, y)
       const sy = $height * 0.35 + isoY(x, y, z)
-      const hue = $t * 40 + x * 30 + z * 60
+      const hue = $time * 40 + x * 30 + z * 60
 
       // Top face
       ctx.fillStyle = Color.hsl(hue, 70, 35 + wave * 30).toCSS()
@@ -196,17 +196,17 @@ ctx.fillStyle = 'rgba(10, 10, 26, 0.12)'
 ctx.fillRect(0, 0, $width, $height)
 
 const cx = $width / 2, cy = $height / 2
-const sides = 5 + floor(sin($t * 0.3) * 2 + 2)
+const sides = 5 + floor(sin($time * 0.3) * 2 + 2)
 const baseR = min($width, $height) * 0.3
 
 const polys = subdivide({j: {from: 0, to: 2, size: 3}})
   .mapWith(({j}) => ({
     r: baseR * (0.5 + j * 0.25),
-    angle: $t * (0.5 + j * 0.2) * (j % 2 ? -1 : 1),
+    angle: $time * (0.5 + j * 0.2) * (j % 2 ? -1 : 1),
   }))
   .map(({j, r, angle}) => [
     NoFill(),
-    Stroke(Color.hsl($t * 50 + j * 120, 80, 55)),
+    Stroke(Color.hsl($time * 50 + j * 120, 80, 55)),
     LineWidth(2),
     Ngon(cx, cy, r, sides, angle),
   ])
@@ -223,10 +223,10 @@ const colors = subdivide({
     y: {from: 0, to: $height - step, step: step},
   })
   .mapWith(({x, y}) => ({
-    n: noise2(x / $width * 4 + sin($t * 0.3) * 2, y / $height * 4 + $t * 0.2),
+    n: noise2(x / $width * 4 + sin($time * 0.3) * 2, y / $height * 4 + $time * 0.2),
   }))
   .map(({x, y, n}) => [
-    Fill(Color.hsl(n * 360 + $t * 20, 60 + n * 30, 30 + n * 35)),
+    Fill(Color.hsl(n * 360 + $time * 20, 60 + n * 30, 30 + n * 35)),
     NoStroke(),
     Rect(x, y, step, step),
   ])
@@ -239,8 +239,8 @@ render(colors)
 const waves = subdivide({j: 40, i: 80})
   .mapWith(({j, i}) => {
     const y0 = (j / 40) * $height
-    const amp = sin($t * 0.5 + j * 0.2) * 30 + 20
-    const phase = i * 0.15 + j * 0.1 + $t
+    const amp = sin($time * 0.5 + j * 0.2) * 30 + 20
+    const phase = i * 0.15 + j * 0.1 + $time
     return {
       x: (i / 80) * $width,
       y: y0 + sin(phase) * amp,
@@ -249,7 +249,7 @@ const waves = subdivide({j: 40, i: 80})
     }
   })
   .map(({j, x, y, xNext, yNext}) => [
-    Stroke(Color.hsl(j * 8 + $t * 30, 70, 50)),
+    Stroke(Color.hsl(j * 8 + $time * 30, 70, 50)),
     LineWidth(1.5), NoFill(), StrokeCap(p.SQUARE),
     Line(x, y, xNext, yNext),
   ])
@@ -327,7 +327,7 @@ const mixing = subdivide({s: {from: 0, to: 1, size: 11}})
 const rainbow = subdivide({i: 60})
   .mapWith(({i}) => ({
     s: i / 60,
-    angle: (i / 60) * TWO_PI + $t * 0.5,
+    angle: (i / 60) * TWO_PI + $time * 0.5,
   }))
   .map(({s, angle}) => [
     Fill(Color.rainbow(s)), NoStroke(),
@@ -347,16 +347,16 @@ const cx = $width / 2, cy = $height / 2
 // Orbiting groups of shapes — each group is rotated
 const groups = subdivide({i: 6})
   .map(({i}) => {
-    const angle = (i / 6) * TWO_PI + $t * 0.5
+    const angle = (i / 6) * TWO_PI + $time * 0.5
     return [
       Translate(cx, cy),
       Rotate(angle),
       Translate(150, 0),
-      Fill(Color.hsl(i * 60 + $t * 30, 70, 55)),
+      Fill(Color.hsl(i * 60 + $time * 30, 70, 55)),
       NoStroke(),
       Circle(0, 0, 25),
-      [Rotate($t * 2),
-        Stroke(Color.hsl(i * 60 + $t * 30, 70, 75)),
+      [Rotate($time * 2),
+        Stroke(Color.hsl(i * 60 + $time * 30, 70, 75)),
         NoFill(),
         LineWidth(2),
         Ngon(0, 0, 40, 4 + i, 0),

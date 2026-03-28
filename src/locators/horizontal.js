@@ -17,6 +17,13 @@ export function createHorizontalLocator(name, y, overlay) {
   function updateDOM() {
     el.style.top = pos.y + 'px';
     label.textContent = hovered ? `$${name} = ${Math.round(pos.y)}` : `$${name}`;
+    // Label: prefer above, fall back to below
+    if (pos.y < 20) {
+      label.style.top = '8px'; label.style.bottom = '';
+    } else {
+      label.style.top = '-16px'; label.style.bottom = '';
+    }
+    label.style.left = '4px';
   }
   updateDOM();
 

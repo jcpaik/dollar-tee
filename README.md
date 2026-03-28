@@ -65,15 +65,36 @@ See `WORKFLOW.md` for full details.
 
 ```
 src/
-  main.js        entry — wires editor + engine + compiler
-  engine.js      rAF loop, global time, draw-fn swap
-  compiler.js    new Function() eval + declarative auto-render
-  editor.js      CodeMirror 6 (one-dark, JS mode)
-  stdlib.js      shapes, directives, math, noise, scene renderer
-  color.js       Color class (RGB/HSL/hex, Mathematica palette)
-  demos.js       demo sketches
-  style.css      layout
+  style.css                layout & dark theme
+  core/
+    main.js                entry — wires editor + engine + compiler + audio
+    engine.js              rAF loop, global time, draw-fn swap
+    compiler.js            new Function() eval + declarative auto-render
+    renderer.js            scene-graph walker, shape drawing
+    stdlib.js              shapes, directives, math, noise — user-facing API
+    p5init.js              p5.js instance creation (instance mode)
+    demos.js               demo sketches
+    demo-selector.js       <select> for demos & saved sketches
+    sketch-store.js        localStorage persistence
+    probe.js               value inspection HUD
+    transport-ui.js        audio controls, timeline, snap, sash
+  audio/
+    audio.js               HTML5 audio loading & playback
+    intervals.js           beat/loop timing ($beat, $loop, tween)
+    timeline.js            canvas-based beat grid & waveform
+  editor/
+    editor.js              CodeMirror 6 (one-dark, JS mode)
+    color-picker.js        inline hex color picker widget
+    val-slider.js          inline val() parameter slider widget
+  lib/
+    color.js               Color class (RGB/HSL/hex, palettes, schemes)
+    complex.js             immutable complex numbers
+    easing.js              33 Penner easings + cubicBezier + spring
+    schemes.js             matplotlib colormaps (viridis, inferno, …)
+    vec.js                 immutable 2D vectors
 ```
+
+Each subdirectory has its own `README.md` with per-module details. See also `src/README.md` for data flow and architecture overview.
 
 ## Design Principles
 

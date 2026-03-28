@@ -5,3 +5,4 @@ dist/
 resources/
 notes/
 .*.swp
+.claude/

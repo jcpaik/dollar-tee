@@ -65,6 +65,12 @@ body {
   min-width: 90px;
 }
 
+.fps-display {
+  color: #888;
+  font-size: 12px;
+  min-width: 50px;
+}
+
 .hint {
   color: #555;
   margin-left: auto;

@@ -1,5 +1,6 @@
 // Engine — owns the animation loop and global time.
 // The draw function is swapped on recompile; the loop never stops.
+// See src/engine/README.md for rAF throttling behavior and p5.js relationship.
 
 import { updateReactiveState } from './stdlib.js';
 
@@ -13,6 +14,9 @@ export function createEngine(canvas, p5Instance) {
   let errorCb = null;
   let preTickCb = null;
   let timeSource = null;
+  let drawMs = 0;
+  let frameGapMs = 0;
+  let lastLoopTime = 0;
   const state = {};  // persistent $$vars backing store
 
   function getTime() {
@@ -22,6 +26,9 @@ export function createEngine(canvas, p5Instance) {
 
   function loop() {
     if (!running) return;
+    const loopNow = performance.now();
+    if (lastLoopTime) frameGapMs = loopNow - lastLoopTime;
+    lastLoopTime = loopNow;
     const t = getTime();
     if (preTickCb) preTickCb(t);
     const W = p ? p.width : canvas.width;
@@ -30,7 +37,9 @@ export function createEngine(canvas, p5Instance) {
     updateReactiveState(t, W, H, p);
 
     try {
+      const t0 = performance.now();
       drawFn(ctx);
+      drawMs = performance.now() - t0;
     } catch (e) {
       if (errorCb) errorCb(e);
     }
@@ -44,6 +53,8 @@ export function createEngine(canvas, p5Instance) {
     stop()        { running = false; },
     getTime,
     getCtx()      { return ctx; },
+    getDrawMs()   { return drawMs; },
+    getFrameGapMs() { return frameGapMs; },
     getP5()       { return p; },
     getState()    { return state; },
     setDraw(fn)   { drawFn = fn; },

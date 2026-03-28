@@ -119,7 +119,11 @@ setupTransport({ audio, engine, timeline, onResize: resize });
 // ── Engine callbacks ──
 
 const timeDisplay = document.getElementById('time-display');
+const fpsDisplay  = document.getElementById('fps-display');
 const audioTimeEl = document.getElementById('audio-time');
+
+let frameCount = 0;
+let lastFpsTime = performance.now();
 
 function fmtTime(s) {
   return Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
@@ -131,6 +135,13 @@ engine.onPreTick = (t) => {
 
 engine.onTick = (t) => {
   timeDisplay.textContent = 't = ' + t.toFixed(2);
+  frameCount++;
+  const now = performance.now();
+  if (now - lastFpsTime >= 1000) {
+    fpsDisplay.textContent = frameCount + ' fps | draw ' + engine.getDrawMs().toFixed(1) + 'ms';
+    frameCount = 0;
+    lastFpsTime = now;
+  }
   if (audio.isLoaded) {
     timeline.update(audio.time);
     audioTimeEl.textContent = fmtTime(audio.time) + ' / ' + fmtTime(audio.duration);

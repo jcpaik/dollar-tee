@@ -4,13 +4,51 @@
 
 ### The Loop (`engine.js`)
 
-The engine runs a `requestAnimationFrame` loop — 60 calls/sec. Each frame:
+The engine runs a `requestAnimationFrame` (rAF) loop. Each frame:
 
 1. Get current time `t` (from wall clock or audio source)
-2. Call `drawFn(ctx, t, W, H)`
+2. Call `drawFn(ctx)`
 3. Schedule next frame
 
 The loop never stops. It's always ticking.
+
+### requestAnimationFrame & Frame Rate
+
+rAF is a browser API — you ask the browser to call you before the next repaint,
+and the **browser decides when**. Typical rates:
+
+- **Plugged in, active tab** → matches display refresh (60fps on 60Hz, 120fps on ProMotion)
+- **macOS Low Power Mode / battery saver** → 30fps
+- **Background / hidden tabs** → 1–10fps
+- **GPU pressure / thermal throttling** → variable drops
+
+There is no way to force a higher rate. If the fps counter shows 30fps but
+draw time is <1ms, the cap is coming from the OS or browser, not the app.
+
+### Relationship to p5.js
+
+p5.js is used as a **rendering backend only**. Its own frame management is
+completely bypassed:
+
+- `p.noLoop()` is called in `p5init.js` — p5's internal `draw()` loop never runs
+- `p.setup()` / `p.draw()` pattern is not used
+- The engine owns `requestAnimationFrame`, timing, and frame scheduling
+
+**What p5 provides:**
+- Canvas setup (`createCanvas`, `resizeCanvas`)
+- Drawing primitives (`circle`, `rect`, `line`, `ellipse`, `arc`, `text`, `image`)
+- Shape composition (`beginShape` / `vertex` / `endShape`, beziers)
+- Styling (`fill`, `stroke`, `strokeWeight`, `blendMode`, `tint`, `filter`)
+- Transforms (`translate`, `rotate`, `scale`, `push` / `pop`)
+- Mouse position (`mouseX`, `mouseY`)
+
+**What p5 does NOT do:**
+- Animation loop (engine's rAF)
+- Event handling (only mouse coords are read)
+- User-facing API (users write `Circle(x, y, r)` and `render(...)`, not `p.circle()`)
+
+The stdlib builds declarative scene descriptors; the renderer translates them
+into p5 draw calls. User code never touches p5 directly.
 
 ### Compilation (`compiler.js`)
 
@@ -95,6 +133,6 @@ Things to watch as the project grows:
   not per frame).
 
 - **Audio analysis per frame.** FFT/waveform data as a `$`-variable means
-  a decode + copy every frame at 60fps.
+  a decode + copy every frame.
 
 None of these are problems today. They're the "watch this gauge" list.

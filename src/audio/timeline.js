@@ -52,10 +52,6 @@ export function createTimeline(container) {
     return { start, end, width: end - start };
   }
 
-  function toX(t, view, W) {
-    return ((t - view.start) / view.width) * W;
-  }
-
   return {
     update(audioTime) {
       const W = container.clientWidth;
@@ -68,63 +64,14 @@ export function createTimeline(container) {
       const elapsed = audioTime - FIRST_BEAT;
       const loopPos = elapsed >= 0 ? elapsed % LOOP_DURATION : 0;
 
-      if (zoom > 1) viewCenter = loopPos;
-      else viewCenter = LOOP_DURATION / 2;
-
+      viewCenter = zoom > 1 ? loopPos : LOOP_DURATION / 2;
       const view = getView();
 
       ctx.clearRect(0, 0, W, H);
-
-      // Beat rectangles
-      for (let i = 0; i < LOOP_BEATS; i++) {
-        const bStart = i * BEAT_DURATION;
-        const bEnd = (i + 1) * BEAT_DURATION;
-        const x1 = toX(bStart, view, W);
-        const x2 = toX(bEnd, view, W);
-        if (x2 < 0 || x1 > W) continue;
-        const cx1 = Math.max(0, x1);
-        const cx2 = Math.min(W, x2);
-        const isActive = loopPos >= bStart && loopPos < bEnd;
-        ctx.fillStyle = isActive ? '#3d3d3d' : '#2a2a2a';
-        ctx.fillRect(cx1, 0, cx2 - cx1 - 1, H);
-      }
-
-      // Waveform
-      if (peaks) {
-        const midY = H / 2;
-        const amp = H * 0.4;
-        ctx.fillStyle = 'rgba(180, 180, 180, 0.3)';
-
-        const pStart = Math.max(0, Math.floor((view.start / LOOP_DURATION) * peaks.length));
-        const pEnd = Math.min(peaks.length, Math.ceil((view.end / LOOP_DURATION) * peaks.length));
-        const barW = Math.max(1, W / (pEnd - pStart));
-
-        for (let i = pStart; i < pEnd; i++) {
-          const t = (i / peaks.length) * LOOP_DURATION;
-          const x = toX(t, view, W);
-          const top = midY - peaks[i].max * amp;
-          const bot = midY - peaks[i].min * amp;
-          ctx.fillRect(x, top, barW + 0.5, bot - top);
-        }
-      }
-
-      // Cue markers
-      ctx.fillStyle = '#ff764d';
-      for (const t of cues) {
-        const x = toX(t, view, W);
-        if (x < -5 || x > W + 5) continue;
-        ctx.fillRect(x - 1, 0, 2, H);
-        ctx.beginPath();
-        ctx.moveTo(x - 4, 0);
-        ctx.lineTo(x + 4, 0);
-        ctx.lineTo(x, 6);
-        ctx.fill();
-      }
-
-      // Playhead
-      const phX = toX(loopPos, view, W);
-      ctx.fillStyle = '#f5c518';
-      ctx.fillRect(phX - 1, 0, 2, H);
+      drawBeatGrid(ctx, view, loopPos, W, H);
+      drawWaveform(ctx, view, peaks, W, H);
+      drawCues(ctx, view, cues, W, H);
+      drawPlayhead(ctx, view, loopPos, W, H);
     },
 
     setAudioBuffer(audioBuffer) {
@@ -151,4 +98,63 @@ export function createTimeline(container) {
     get snapping() { return snap; },
     get cues() { return [...cues]; },
   };
+}
+
+// ── Drawing atoms ───────────────────────────────────────────────
+
+function toX(t, view, W) {
+  return ((t - view.start) / view.width) * W;
+}
+
+function drawBeatGrid(ctx, view, loopPos, W, H) {
+  for (let i = 0; i < LOOP_BEATS; i++) {
+    const bStart = i * BEAT_DURATION;
+    const bEnd = (i + 1) * BEAT_DURATION;
+    const x1 = toX(bStart, view, W);
+    const x2 = toX(bEnd, view, W);
+    if (x2 < 0 || x1 > W) continue;
+    const cx1 = Math.max(0, x1);
+    const cx2 = Math.min(W, x2);
+    ctx.fillStyle = (loopPos >= bStart && loopPos < bEnd) ? '#3d3d3d' : '#2a2a2a';
+    ctx.fillRect(cx1, 0, cx2 - cx1 - 1, H);
+  }
+}
+
+function drawWaveform(ctx, view, peaks, W, H) {
+  if (!peaks) return;
+  const midY = H / 2;
+  const amp = H * 0.4;
+  ctx.fillStyle = 'rgba(180, 180, 180, 0.3)';
+
+  const pStart = Math.max(0, Math.floor((view.start / LOOP_DURATION) * peaks.length));
+  const pEnd = Math.min(peaks.length, Math.ceil((view.end / LOOP_DURATION) * peaks.length));
+  const barW = Math.max(1, W / (pEnd - pStart));
+
+  for (let i = pStart; i < pEnd; i++) {
+    const t = (i / peaks.length) * LOOP_DURATION;
+    const x = toX(t, view, W);
+    const top = midY - peaks[i].max * amp;
+    const bot = midY - peaks[i].min * amp;
+    ctx.fillRect(x, top, barW + 0.5, bot - top);
+  }
+}
+
+function drawCues(ctx, view, cues, W, H) {
+  ctx.fillStyle = '#ff764d';
+  for (const t of cues) {
+    const x = toX(t, view, W);
+    if (x < -5 || x > W + 5) continue;
+    ctx.fillRect(x - 1, 0, 2, H);
+    ctx.beginPath();
+    ctx.moveTo(x - 4, 0);
+    ctx.lineTo(x + 4, 0);
+    ctx.lineTo(x, 6);
+    ctx.fill();
+  }
+}
+
+function drawPlayhead(ctx, view, loopPos, W, H) {
+  const x = toX(loopPos, view, W);
+  ctx.fillStyle = '#f5c518';
+  ctx.fillRect(x - 1, 0, 2, H);
 }

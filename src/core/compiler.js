@@ -3,7 +3,7 @@
 // them directly (no destructuring needed).
 // render() can be called anywhere; return [...] still works as fallback.
 
-import { renderScene } from './stdlib.js';
+import { renderScene } from './renderer.js';
 
 // probe(expr) → probe('expr', expr)  — auto-label single-arg calls
 function transformProbe(code) {

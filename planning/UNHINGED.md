@@ -534,8 +534,3 @@ Same for `Rect`/`rect`, `Fill`/`fill`, `Stroke`/`stroke`, `Line`/`line`, `Text`/
 **Pitch to p5 users:** "Your code already works. When you want declarative composition, capitalize." One-word migration path.
 
 **Pitch to dollar-tee users:** `render(Fill('red'), Circle(200, 200, 40))` — Mathematica-flavored, visually distinct from imperative code. You can mix both styles in one sketch.
-
-### Relationship to P5JS_COMPARISON.md
-
-That doc asks "should dollar-tee become a p5 library?" — the reverse direction. This idea is: p5 becomes dollar-tee's engine. Different question, complementary answers.
-

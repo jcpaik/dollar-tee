@@ -1,7 +1,7 @@
 // Intervals — named time regions with .s, .e, .len, .progress, .n, .t, .ease().
 // Updated each frame via updateLoopTime(). User code sees $loop, $beat1–$beat8, $beat.
 
-import { EASING_MAP } from './easing.js';
+import { EASING_MAP } from '../lib/easing.js';
 import { LOOP_DURATION, LOOP_BEATS, BEAT_DURATION } from './timeline.js';
 
 let _loopT = 0;

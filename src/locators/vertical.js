@@ -17,6 +17,15 @@ export function createVerticalLocator(name, x, overlay) {
   function updateDOM() {
     el.style.left = pos.x + 'px';
     label.textContent = hovered ? `$${name} = ${Math.round(pos.x)}` : `$${name}`;
+    const W = overlay.clientWidth;
+    const lw = label.offsetWidth || 40;
+    // Label: prefer right, fall back to left
+    if (pos.x + lw + 14 > W) {
+      label.style.left = ''; label.style.right = '10px';
+    } else {
+      label.style.left = '10px'; label.style.right = '';
+    }
+    label.style.top = '4px';
   }
   updateDOM();
 

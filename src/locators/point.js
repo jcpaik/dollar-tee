@@ -25,6 +25,25 @@ export function createPointLocator(name, x, y, overlay) {
     label.textContent = hovered
       ? `$${name} = (${Math.round(pos.x)}, ${Math.round(pos.y)})`
       : `$${name}`;
+
+    // Position label to avoid clipping
+    const W = overlay.clientWidth, H = overlay.clientHeight;
+    const lw = label.offsetWidth, lh = label.offsetHeight;
+    // Vertical: prefer above, fall back to below
+    if (pos.y < lh + 20) {
+      label.style.top = '18px'; label.style.bottom = '';
+    } else {
+      label.style.top = ''; label.style.bottom = (el.offsetHeight - 6) + 'px';
+    }
+    // Horizontal: center, but clamp to overlay edges
+    const halfLw = lw / 2;
+    if (pos.x - halfLw < 0) {
+      label.style.left = -pos.x + 'px'; label.style.transform = '';
+    } else if (pos.x + halfLw > W) {
+      label.style.left = ''; label.style.right = -(W - pos.x) + 'px'; label.style.transform = '';
+    } else {
+      label.style.left = '50%'; label.style.right = ''; label.style.transform = 'translateX(-50%)';
+    }
   }
   updateDOM();
 

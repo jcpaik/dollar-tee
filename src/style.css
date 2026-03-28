@@ -383,13 +383,7 @@ canvas {
   pointer-events: none;
 }
 
-.locator-point .locator-label {
-  top: -18px; left: 50%;
-  transform: translateX(-50%);
-}
-
-.locator-hline .locator-label { left: 4px; top: -16px; }
-.locator-vline .locator-label { top: 4px; left: 10px; }
+/* Label positions set dynamically in JS to avoid clipping */
 
 /* ── Locator context menu ────────────────────────────────────── */
 

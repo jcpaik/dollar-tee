@@ -17,12 +17,19 @@ export function createPointLocator(name, x, y, overlay) {
   const label = el.querySelector('.locator-label');
   const pos = { x, y };
 
+  let hovered = false;
+
   function updateDOM() {
     el.style.left = pos.x + 'px';
     el.style.top = pos.y + 'px';
-    label.textContent = `$${name} (${Math.round(pos.x)}, ${Math.round(pos.y)})`;
+    label.textContent = hovered
+      ? `$${name} = (${Math.round(pos.x)}, ${Math.round(pos.y)})`
+      : `$${name}`;
   }
   updateDOM();
+
+  el.addEventListener('mouseenter', () => { hovered = true; updateDOM(); });
+  el.addEventListener('mouseleave', () => { if (!el.classList.contains('dragging')) { hovered = false; updateDOM(); } });
 
   // Drag
   el.addEventListener('mousedown', (e) => {
@@ -42,6 +49,8 @@ export function createPointLocator(name, x, y, overlay) {
     }
     function onUp() {
       el.classList.remove('dragging');
+      hovered = false;
+      updateDOM();
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
     }

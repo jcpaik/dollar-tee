@@ -12,12 +12,16 @@ export function createHorizontalLocator(name, y, overlay) {
 
   const label = el.querySelector('.locator-label');
   const pos = { y };
+  let hovered = false;
 
   function updateDOM() {
     el.style.top = pos.y + 'px';
-    label.textContent = `$${name} = ${Math.round(pos.y)}`;
+    label.textContent = hovered ? `$${name} = ${Math.round(pos.y)}` : `$${name}`;
   }
   updateDOM();
+
+  el.addEventListener('mouseenter', () => { hovered = true; updateDOM(); });
+  el.addEventListener('mouseleave', () => { hovered = false; updateDOM(); });
 
   el.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;

@@ -12,12 +12,16 @@ export function createVerticalLocator(name, x, overlay) {
 
   const label = el.querySelector('.locator-label');
   const pos = { x };
+  let hovered = false;
 
   function updateDOM() {
     el.style.left = pos.x + 'px';
-    label.textContent = `$${name} = ${Math.round(pos.x)}`;
+    label.textContent = hovered ? `$${name} = ${Math.round(pos.x)}` : `$${name}`;
   }
   updateDOM();
+
+  el.addEventListener('mouseenter', () => { hovered = true; updateDOM(); });
+  el.addEventListener('mouseleave', () => { hovered = false; updateDOM(); });
 
   el.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;

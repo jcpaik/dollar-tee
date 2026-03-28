@@ -386,10 +386,7 @@ canvas {
 .locator-point .locator-label {
   top: -18px; left: 50%;
   transform: translateX(-50%);
-  display: none;
 }
-.locator-point:hover .locator-label,
-.locator-point.dragging .locator-label { display: block; }
 
 .locator-hline .locator-label { left: 4px; top: -16px; }
 .locator-vline .locator-label { top: 4px; left: 10px; }

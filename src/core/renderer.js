@@ -1,5 +1,5 @@
 // Renderer — walks scene array, applies directives, draws shapes.
-// Supports p5.js (primary) and Canvas2D fallback.
+// Requires p5.js backend (set via setRendererP5 before first render).
 
 import { Color } from '../lib/color.js';
 
@@ -23,9 +23,9 @@ export function renderScene(ctx, items, state) {
 
   for (const item of items) {
     if (Array.isArray(item)) {
-      if (_p5) _p5.push();
+      _p5.push();
       renderScene(ctx, item, { ...state });
-      if (_p5) _p5.pop();
+      _p5.pop();
       continue;
     }
 
@@ -49,60 +49,49 @@ export function renderScene(ctx, items, state) {
 
 function applyDirective(ctx, item, state) {
   if (item.action === 'bg') {
-    if (_p5) {
-      _p5.background(item.value);
-    } else {
-      ctx.fillStyle = item.value;
-      ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    }
+    _p5.background(item.value);
     return;
   }
 
   // Transform actions
-  if (item.action === 'translate') { if (_p5) _p5.translate(item.x, item.y); return; }
-  if (item.action === 'rotate')    { if (_p5) _p5.rotate(item.angle); return; }
-  if (item.action === 'scale')     { if (_p5) _p5.scale(item.x, item.y); return; }
+  if (item.action === 'translate') { _p5.translate(item.x, item.y); return; }
+  if (item.action === 'rotate')    { _p5.rotate(item.angle); return; }
+  if (item.action === 'scale')     { _p5.scale(item.x, item.y); return; }
 
   // Style actions
-  if (item.action === 'strokeCap')   { if (_p5) _p5.strokeCap(item.value); return; }
-  if (item.action === 'strokeJoin')  { if (_p5) _p5.strokeJoin(item.value); return; }
+  if (item.action === 'strokeCap')   { _p5.strokeCap(item.value); return; }
+  if (item.action === 'strokeJoin')  { _p5.strokeJoin(item.value); return; }
   if (item.action === 'blendMode') {
-    if (_p5) {
-      const mode = typeof item.value === 'string' ? _p5[item.value.toUpperCase()] || item.value : item.value;
-      _p5.blendMode(mode);
-    }
+    const mode = typeof item.value === 'string' ? _p5[item.value.toUpperCase()] || item.value : item.value;
+    _p5.blendMode(mode);
     return;
   }
-  if (item.action === 'rectMode')    { if (_p5) _p5.rectMode(item.value); return; }
-  if (item.action === 'ellipseMode') { if (_p5) _p5.ellipseMode(item.value); return; }
+  if (item.action === 'rectMode')    { _p5.rectMode(item.value); return; }
+  if (item.action === 'ellipseMode') { _p5.ellipseMode(item.value); return; }
 
   // Typography actions
-  if (item.action === 'textAlign')  { if (_p5) _p5.textAlign(item.h, item.v); return; }
-  if (item.action === 'textStyle')  { if (_p5) _p5.textStyle(item.value); return; }
+  if (item.action === 'textAlign')  { _p5.textAlign(item.h, item.v); return; }
+  if (item.action === 'textStyle')  { _p5.textStyle(item.value); return; }
 
   // Image actions
-  if (item.action === 'tint')   { if (_p5) _p5.tint(item.value); return; }
-  if (item.action === 'noTint') { if (_p5) _p5.noTint(); return; }
+  if (item.action === 'tint')   { _p5.tint(item.value); return; }
+  if (item.action === 'noTint') { _p5.noTint(); return; }
 
   // Clip action — draw mask shape inside beginClip/endClip
   if (item.action === 'clip') {
-    if (_p5) {
-      _p5.beginClip({ invert: item.invert });
-      drawShape(ctx, item.shape, state);
-      _p5.endClip();
-    }
+    _p5.beginClip({ invert: item.invert });
+    drawShape(ctx, item.shape, state);
+    _p5.endClip();
     return;
   }
 
   // Filter action
   if (item.action === 'filter') {
-    if (_p5) {
-      const filterType = typeof item.type === 'string' ? _p5[item.type.toUpperCase()] || item.type : item.type;
-      if (item.param !== undefined) {
-        _p5.filter(filterType, item.param);
-      } else {
-        _p5.filter(filterType);
-      }
+    const filterType = typeof item.type === 'string' ? _p5[item.type.toUpperCase()] || item.type : item.type;
+    if (item.param !== undefined) {
+      _p5.filter(filterType, item.param);
+    } else {
+      _p5.filter(filterType);
     }
     return;
   }
@@ -113,11 +102,9 @@ function applyDirective(ctx, item, state) {
   }
 }
 
-// ── Shape drawing (p5) ──────────────────────────────────────────
+// ── Shape drawing ──────────────────────────────────────────────
 
 function drawShape(ctx, shape, state) {
-  if (!_p5) { drawShapeCanvas(ctx, shape, state); return; }
-
   const p = _p5;
 
   const prevAlpha = p.drawingContext.globalAlpha;
@@ -196,55 +183,4 @@ function drawShape(ctx, shape, state) {
   }
 
   p.drawingContext.globalAlpha = prevAlpha;
-}
-
-// ── Shape drawing (Canvas2D fallback) ───────���───────────────────
-
-function drawShapeCanvas(ctx, shape, state) {
-  ctx.save();
-  ctx.globalAlpha = state.globalAlpha;
-  ctx.beginPath();
-
-  switch (shape.type) {
-    case 'circle':
-      ctx.arc(shape.x, shape.y, Math.max(0, shape.r), 0, Math.PI * 2);
-      break;
-    case 'line':
-      ctx.moveTo(shape.x1, shape.y1);
-      ctx.lineTo(shape.x2, shape.y2);
-      break;
-    case 'rect':
-      ctx.rect(shape.x, shape.y, shape.w, shape.h);
-      break;
-    case 'polygon':
-      if (!shape.pts || shape.pts.length < 2) { ctx.restore(); return; }
-      ctx.moveTo(shape.pts[0][0], shape.pts[0][1]);
-      for (let i = 1; i < shape.pts.length; i++) ctx.lineTo(shape.pts[i][0], shape.pts[i][1]);
-      ctx.closePath();
-      break;
-    case 'arc':
-      ctx.arc(shape.x, shape.y, Math.max(0, shape.r), shape.start, shape.end);
-      break;
-    case 'ellipse':
-      ctx.ellipse(shape.x, shape.y, Math.max(0, shape.rx), Math.max(0, shape.ry), 0, 0, Math.PI * 2);
-      break;
-    case 'text':
-      ctx.font = state.font || `${shape.size}px monospace`;
-      if (state.fill) { ctx.fillStyle = state.fill; ctx.fillText(shape.str, shape.x, shape.y); }
-      if (state.stroke) {
-        ctx.strokeStyle = state.stroke;
-        ctx.lineWidth = state.lineWidth || 1;
-        ctx.strokeText(shape.str, shape.x, shape.y);
-      }
-      ctx.restore();
-      return;
-  }
-
-  if (state.fill) { ctx.fillStyle = state.fill; ctx.fill(); }
-  if (state.stroke) {
-    ctx.strokeStyle = state.stroke;
-    ctx.lineWidth = state.lineWidth || 1;
-    ctx.stroke();
-  }
-  ctx.restore();
 }

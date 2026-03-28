@@ -13,6 +13,7 @@ import { updateLoopTime } from '../audio/intervals.js';
 import { listSketches, saveSketch, loadSketch } from './sketch-store.js';
 import { createDemoSelector } from './demo-selector.js';
 import { setupTransport } from './transport-ui.js';
+import { setupLocators, getLocatorGetters, syncOverlay, toggleLocators } from '../locators/main.js';
 
 // ── Create subsystems ──
 
@@ -40,6 +41,7 @@ function run() {
       { ...stateStdlib },
       Object.getOwnPropertyDescriptors(stdlib)
     );
+    Object.defineProperties(allStdlib, Object.getOwnPropertyDescriptors(getLocatorGetters()));
     const drawFn = compile(editor.getCode(), allStdlib, engine.getState(), p5Instance);
     updateReactiveState(engine.getTime(), p5Instance.width, p5Instance.height, p5Instance);
     drawFn(engine.getCtx());
@@ -50,6 +52,10 @@ function run() {
     errorBar.style.display = 'block';
   }
 }
+
+// ── Locators ──
+
+setupLocators(document.getElementById('canvas-pane'), run);
 
 // ── Auto-run with debounce ──
 
@@ -101,6 +107,7 @@ function save() {
 document.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); run(); }
   if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); save(); }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'l') { e.preventDefault(); toggleLocators(); }
 });
 
 // ── Canvas resize ──
@@ -108,6 +115,7 @@ document.addEventListener('keydown', (e) => {
 function resize() {
   const pane = document.getElementById('canvas-pane');
   p5Instance.resizeCanvas(pane.clientWidth, pane.clientHeight);
+  syncOverlay();
 }
 resize();
 window.addEventListener('resize', resize);

@@ -534,3 +534,143 @@ Same for `Rect`/`rect`, `Fill`/`fill`, `Stroke`/`stroke`, `Line`/`line`, `Text`/
 **Pitch to p5 users:** "Your code already works. When you want declarative composition, capitalize." One-word migration path.
 
 **Pitch to dollar-tee users:** `render(Fill('red'), Circle(200, 200, 40))` — Mathematica-flavored, visually distinct from imperative code. You can mix both styles in one sketch.
+
+---
+
+## Locators — Canvas Overlay GUI Components
+
+The right pane (rendered canvas) is currently display-only. Want: **interactive GUI elements layered on top of it**. Not drawn by p5 — drawn on a separate overlay so they don't interfere with the art. The user's sketch renders below; locators float above.
+
+### What are locators?
+
+Anything interactive that lives on the canvas surface but isn't part of the artwork:
+
+- **Draggable points** (Mathematica `Locator[]` style) — place a point, drag it, read its position in code as a vec2. Already sketched above in "Draggable Cue Points" but this is bigger.
+- **XY coordinate rulers / axes** — pixel rulers along the edges. Shows where you are. Maybe snap-to-grid.
+- **Bounding box handles** — drag corners/edges to define a rectangular region. Code reads it as `$box.x, $box.y, $box.w, $box.h`.
+- **Angle dial** — radial control for rotation values. Drag around a circle to set an angle.
+- **Path editor** — place control points, get a Bezier/polyline in code.
+- **Grid overlay** — visual reference grid, toggleable, doesn't render into the artwork.
+- **Measurement tool** — click two points, see the distance. Useful for laying things out.
+- **Color picker eyedropper** — click on canvas, get the color at that pixel.
+
+### Architecture question: where do they live?
+
+**Option A — HTML overlay.** A transparent `<div>` or `<svg>` positioned exactly over the p5 canvas. Locator handles are DOM elements (or SVG circles/rects). Canvas renders underneath, locators float on top. Mouse events hit the overlay first; pass through when not on a handle.
+
+- Pro: DOM handles get focus/hover/cursor for free. No interference with p5 rendering.
+- Pro: CSS transforms match canvas transforms easily.
+- Con: Two coordinate systems to keep in sync (DOM pixels vs canvas pixels, especially on retina / resize).
+- Con: Many locators = many DOM nodes. Probably fine for <100.
+
+**Option B — Separate canvas overlay.** A second `<canvas>` stacked on top of the p5 canvas. Locators drawn with Canvas2D. Custom hit-testing.
+
+- Pro: Pixel-perfect alignment, same coordinate system.
+- Pro: Can draw anything (guides, grids, measurement lines) without DOM overhead.
+- Con: Must implement own hit-testing, hover states, cursor changes.
+- Con: Redraws needed when locators move.
+
+**Option C — Draw locators inside p5, after the user's scene.** After `renderScene()`, draw locator handles using p5. Simple — no extra layers.
+
+- Pro: Zero extra infrastructure.
+- Con: Locators mix into the artwork if user screenshots/exports. They ARE part of the frame.
+- Con: Locators affected by user transforms (rotate, scale). Confusing.
+- Con: Can't overlay on top of blend modes / filters without getting composited in.
+
+**Gut feeling:** Option A (HTML/SVG overlay) for handle-type locators, Option B (canvas overlay) for guides/rulers/grids. Could be one overlay canvas + a few DOM elements for the interactive bits.
+
+### How locators wire to code
+
+Same `$` pattern as everything else:
+
+```js
+// Place a Locator named $p1 at initial position (200, 200)
+// User drags it around on the canvas
+
+render(
+  Circle($p1, 50),            // vec2 position from locator
+  Line($p1, $p2),             // line between two locators
+  Text(`${$p1}`, $p1.add(vec2(10, -10))),  // label showing coords
+)
+```
+
+Locators are vec2 values. `$p1.x`, `$p1.y` work naturally. Arithmetic works: `$p1.add($p2).scale(0.5)` = midpoint. `$p1.dist($p2)` = distance.
+
+### How are locators created?
+
+**Decided: UI-placed (Option B).** Single-dollar variables (`$foo`) are always injected from outside — they come from the system, not from code. Locators follow this rule.
+
+**Rejected alternatives (kept for reference):**
+- **(A) Code-declared.** User writes `Locator('$p1', vec2(200, 200))` in code. System detects it, creates the handle. Dragging updates position. Problem: `$` variables shouldn't be created by code.
+- **(C) Hybrid.** Code declares with defaults, UI overrides. Like `val(50, 0, 100)` — code sets default, drag overrides. Problem: same as A — code shouldn't create `$` variables. But the val() parallel is interesting if we ever relax the rule.
+
+**UX flow:**
+1. Right-click canvas → "Add locator"
+2. Name input box appears with `$` prefix pre-filled: `$[____]`
+3. User types the name (e.g., `center`, `anchor`, `p1`)
+4. Locator handle appears at click position
+5. Code can immediately reference `$center` as a vec2
+6. Drag to reposition; value persists across recompiles
+
+This is consistent: `$mouse` comes from the system (cursor), `$time` comes from the system (clock), `$center` comes from the system (canvas midpoint), `$p1` comes from the system (user-placed locator). Code never creates `$` variables — it only reads them.
+
+### Locator types beyond points
+
+- **LocatorLine($name, $p1, $p2)** — constrained to a line segment, returns a scalar (0→1 progress along the line).
+- **LocatorRect($name, pos, size)** — drag corners to resize. Returns `{x, y, w, h}`.
+- **LocatorAngle($name, center, initial)** — drag around a circle. Returns radians.
+- **LocatorPath($name, points)** — editable polyline/bezier. Returns array of vec2.
+
+### Rulers and guides (non-interactive overlay)
+
+Not wired to `$` variables — purely visual aids:
+
+- **Pixel rulers** — along top and left edges, like Photoshop. Show coordinates as you move the mouse.
+- **Grid** — toggleable, adjustable spacing. Drawn on overlay, doesn't enter the artwork.
+- **Crosshair at mouse** — subtle lines showing exact mouse position. Coordinate readout.
+- **Origin marker** — shows where (0,0) is, especially after transforms.
+- **Safe area / margin guides** — for layout.
+
+All of these are toggled via a toolbar button or keyboard shortcut, not via code.
+
+### The two-editor problem: render loop vs event console
+
+The current editor runs code at 60fps. Everything in it is a per-frame expression. But locators (and other things) need **one-shot actions** — things that happen once, not 60 times per second:
+
+- Create a locator: `addLocator('$p1', vec2(200, 200))`
+- Delete one: `removeLocator('$p1')`
+- Set a persistent value: `$radius = 50`
+- Trigger a state reset: `clearAll()`
+- Import a resource: `loadImage('cat.png')`
+
+These are **events**, not per-frame computations. Running them at 60fps either wastes work or causes bugs (recreating the locator every frame, resetting state every frame, etc.).
+
+**Possible directions:**
+
+**A. Separate console pane.** A REPL / command line below the editor. You type a line, hit enter, it executes once. Like a browser devtools console but wired into the dollar-tee runtime. The render editor is for per-frame code; the console is for one-shot commands.
+
+**B. Setup block.** A special section in the editor that runs once on compile, not per frame. Like p5's `setup()` vs `draw()`. Could be a comment marker (`// --- setup ---`) or a separate tab.
+
+**C. UI-only for events.** No code for one-shot actions — they're all UI interactions (right-click menu, toolbar buttons, keyboard shortcuts). Code never fires events. Keeps the "code = per-frame" contract pure.
+
+**D. Smart detection.** The compiler detects which expressions are "setup-like" (calls to `addLocator`, `loadImage`, etc.) and hoists them out of the frame loop automatically. Magic but fragile.
+
+**The tension:** dollar-tee's identity is "one editor, one render loop, everything is live." A second console adds power but breaks the simplicity. But trying to cram events into a 60fps loop is wrong too.
+
+**Open question:** Is this just about locators, or is there a broader need for an event/command layer? If it's only locators, Option C (pure UI) is fine. If users will want to script one-shot actions generally, a console (A) or setup block (B) becomes necessary.
+
+---
+
+### Connection to existing `$mouse`
+
+`$mouse` is already a reactive vec2. Locators are the same concept but user-placed and persistent. `$mouse` is the "built-in locator that follows your cursor." Custom locators are "mouse positions you pinned down."
+
+### Connection to `val()` sliders
+
+`val()` = 1D locator in the editor. Canvas locators = 2D locators on the canvas. Same mental model: code declares, UI provides the control surface, value flows back into code.
+
+**Emerging pattern:**
+- `val(50, 0, 100)` — 1D, in-editor, scalar
+- `Locator($name, pos)` — 2D, on-canvas, vec2
+- Timeline intervals — 1D, on-timeline, time range
+- All are "$-wired UI controls"

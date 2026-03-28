@@ -84,6 +84,16 @@ function applyDirective(ctx, item, state) {
   if (item.action === 'tint')   { if (_p5) _p5.tint(item.value); return; }
   if (item.action === 'noTint') { if (_p5) _p5.noTint(); return; }
 
+  // Clip action — draw mask shape inside beginClip/endClip
+  if (item.action === 'clip') {
+    if (_p5) {
+      _p5.beginClip({ invert: item.invert });
+      drawShape(ctx, item.shape, state);
+      _p5.endClip();
+    }
+    return;
+  }
+
   // Filter action
   if (item.action === 'filter') {
     if (_p5) {

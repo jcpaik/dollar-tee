@@ -172,6 +172,9 @@ function NoTint()       { return { _dir: true, action: 'noTint' }; }
 // Filter directive
 function Filter(type, param) { return { _dir: true, action: 'filter', type, param }; }
 
+// Clipping directive — clips subsequent draws to the given shape
+function Clip(shape, opts) { return { _dir: true, action: 'clip', shape, invert: opts?.invert ?? false }; }
+
 // ── val() — identity for now, future: CodeMirror slider widget ───
 
 function val(current, _min = 0, _max = 1) { return current; }
@@ -333,7 +336,7 @@ export const stdlib = {
   Translate, Rotate, Scale,
   StrokeCap, StrokeJoin, BlendMode, RectMode, EllipseMode,
   TextSize, TextAlign, TextFont, TextStyle,
-  Tint, NoTint, Filter,
+  Tint, NoTint, Filter, Clip,
 
   // Color
   Color,

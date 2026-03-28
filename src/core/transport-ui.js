@@ -10,9 +10,10 @@ export function setupTransport({ audio, engine, timeline, onResize }) {
   const transportEl    = document.getElementById('transport');
   const transportSash  = document.getElementById('transport-sash');
 
-  // Pre-load default track
+  // Pre-load default track (muted by default)
   (async () => {
     await audio.loadPath('/resources/music.mp3');
+    audio.muted = true;
     engine.setTimeSource(() => audio.time);
     playBtn.disabled = false;
     const resp = await fetch('/resources/music.mp3');

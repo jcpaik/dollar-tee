@@ -598,15 +598,21 @@ Locators are vec2 values. `$p1.x`, `$p1.y` work naturally. Arithmetic works: `$p
 
 ### How are locators created?
 
-Open question — several models:
+**Decided: UI-placed (Option B).** Single-dollar variables (`$foo`) are always injected from outside — they come from the system, not from code. Locators follow this rule.
 
-**A. Code-declared.** User writes `Locator('$p1', vec2(200, 200))` in their code. The system detects it, creates the handle on the overlay. Dragging updates the position. Like `val()` — code declares, UI manifests.
+**Rejected alternatives (kept for reference):**
+- **(A) Code-declared.** User writes `Locator('$p1', vec2(200, 200))` in code. System detects it, creates the handle. Dragging updates position. Problem: `$` variables shouldn't be created by code.
+- **(C) Hybrid.** Code declares with defaults, UI overrides. Like `val(50, 0, 100)` — code sets default, drag overrides. Problem: same as A — code shouldn't create `$` variables. But the val() parallel is interesting if we ever relax the rule.
 
-**B. UI-placed.** Right-click canvas → "Add locator." Name it, it appears. Code can reference `$p1` immediately. More visual but disconnected from code.
+**UX flow:**
+1. Right-click canvas → "Add locator"
+2. Name input box appears with `$` prefix pre-filled: `$[____]`
+3. User types the name (e.g., `center`, `anchor`, `p1`)
+4. Locator handle appears at click position
+5. Code can immediately reference `$center` as a vec2
+6. Drag to reposition; value persists across recompiles
 
-**C. Hybrid.** Code declares locators with initial positions. If they don't exist yet, they're created. If they already exist (from a previous drag), the saved position overrides the code default. Like `val(50, 0, 100)` — code sets the default, UI overrides.
-
-Hybrid (C) is the most `val()`-consistent. Code is source of truth for what locators exist and their defaults; UI overrides the current value.
+This is consistent: `$mouse` comes from the system (cursor), `$time` comes from the system (clock), `$center` comes from the system (canvas midpoint), `$p1` comes from the system (user-placed locator). Code never creates `$` variables — it only reads them.
 
 ### Locator types beyond points
 

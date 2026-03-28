@@ -1,5 +1,5 @@
 // Flowing sine wave lines
-const waves = subdivide({j: 40, i: 80})
+const waves = table({j: 40, i: 80})
   .mapWith(({j, i}) => {
     const y0 = (j / 40) * $height
     const amp = sin($time * 0.5 + j * 0.2) * 30 + 20

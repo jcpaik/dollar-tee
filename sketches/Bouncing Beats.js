@@ -6,7 +6,7 @@ const easings = [
 ]
 const spacing = $width / 9
 
-const beats = subdivide({i: 8})
+const beats = table({i: 8})
   .mapWith(({i}) => {
     const beat = $beats[i]
     const eased = beat.active ? beat.ease(easings[i]) : 0

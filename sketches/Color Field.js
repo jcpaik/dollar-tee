@@ -1,9 +1,9 @@
 // Noise-based animated color grid
 const step = 10
 
-const colors = subdivide({
-    x: {from: 0, to: $width - step, step: step},
-    y: {from: 0, to: $height - step, step: step},
+const colors = table({
+    x: {to: $width - step, step: step},
+    y: {to: $height - step, step: step},
   })
   .mapWith(({x, y}) => ({
     n: noise2(x / $width * 4 + sin($time * 0.3) * 2, y / $height * 4 + $time * 0.2),

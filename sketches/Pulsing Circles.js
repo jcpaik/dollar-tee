@@ -1,5 +1,5 @@
 // Concentric circles pulsing to the beat
-const circles = subdivide({i: {from: 12, to: 0, size: 13}})
+const circles = table({i: {from: 12, to: 0, n: 13}})
   .mapWith(({i}) => {
     const beat = $beats[i % 8]
     return { pulse: beat.active ? beat.ease("outCubic") : 0 }

@@ -9,7 +9,7 @@ const ringR = min($width, $height) * 0.25
 const ringY = $height * 0.78
 
 // Palette swatches — index space mapped to position + beat pulse
-const swatches = subdivide({i: n})
+const swatches = table({i: n})
   .mapWith(({i}) => {
     const beat = $beats[i % 8]
     return {
@@ -23,14 +23,14 @@ const swatches = subdivide({i: n})
   ])
 
 // Color mixing — [0, 1] space mapped to blended colors
-const mixing = subdivide({s: {from: 0, to: 1, size: 11}})
+const mixing = table({s: {n: 11}})
   .map(({s}) => [
     Fill(a.mix(b, s)), NoStroke(),
     Rect(cx - 200 + s * 400, cy, 35, 35),
   ])
 
 // Rainbow ring — [0, 1) space mapped to angle, then to position
-const rainbow = subdivide({i: 60})
+const rainbow = table({i: 60})
   .mapWith(({i}) => ({
     s: i / 60,
     angle: (i / 60) * TWO_PI + $time * 0.5,

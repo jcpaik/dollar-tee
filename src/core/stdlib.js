@@ -180,58 +180,15 @@ function Clip(shape, opts) { return { _dir: true, action: 'clip', shape, invert:
 
 function val(current, _min = 0, _max = 1) { return current; }
 
-// ── table() — Mathematica-style declarative iteration ────────────
-// table({i: 8, j: 8}, ({i, j}) => [...items])
-// Range syntax:
-//   {i: 8}             → i from 1 to 8
-//   {i: [3, 10]}       → i from 3 to 10
-//   {i: [3, 10, 2]}    → i from 3 to 10, step 2
-//   {i: {from: 3, to: 10, step: 2}}
-
-function parseRange(r) {
-  if (typeof r === 'number') return [1, r, 1];
-  if (Array.isArray(r)) {
-    const [a, b, s] = r;
-    const step = s || (a <= b ? 1 : -1);
-    return [a, b, step];
-  }
-  if (typeof r === 'object' && r !== null) {
-    const step = r.step || (r.from <= r.to ? 1 : -1);
-    return [r.from, r.to, step];
-  }
-  return [1, 1, 1];
-}
-
-function table(spec, fn) {
-  const keys = Object.keys(spec);
-  const ranges = keys.map(k => parseRange(spec[k]));
-  const items = [];
-
-  function recurse(depth, obj) {
-    if (depth === keys.length) {
-      const result = fn(obj);
-      if (Array.isArray(result)) items.push(...result);
-      else if (result != null) items.push(result);
-      return;
-    }
-    const key = keys[depth];
-    const [from, to, step] = ranges[depth];
-    const cmp = step > 0 ? (v) => v <= to : (v) => v >= to;
-    for (let v = from; cmp(v); v += step) {
-      obj[key] = v;
-      recurse(depth + 1, obj);
-    }
-  }
-
-  recurse(0, {});
-  return items;
-}
-
-// ── subdivide() — parameter space for functional chaining ────────
-// subdivide({t: {from: 0, to: 1, size: 60}})  → 60 values from 0 to 1
-// subdivide({i: 8})                            → 8 integers: 0, 1, ..., 7
-// subdivide({x: {from: 0, to: 100, step: 10}}) → 0, 10, 20, ..., 100
-// Returns array with .mapWith() for chaining: adds fields without losing existing ones.
+// ── table() — parameter space with .mapWith() chaining ───────────
+// table({i: 10})                            → 10 integers: 0, 1, ..., 9
+// table({i: [0, 10]})                       → step 1: 0, 1, ..., 10
+// table({i: [0, 10, 3]})                    → step 3: 0, 3, 6, 9
+// table({s: {n: 41}})                       → 41 points from 0 to 1
+// table({s: {steps: 40}})                   → same (40 intervals = 41 points)
+// table({x: {to: 100, step: 10}})           → 0, 10, 20, ..., 100
+// table({i: {n: 30, step: 3}})              → 0, 3, 6, ..., 87 (30 points)
+// Defaults: from=0, to=1. Returns array with .mapWith() for chaining.
 
 function _attachMapWith(arr) {
   arr.mapWith = function(fn) {
@@ -240,24 +197,61 @@ function _attachMapWith(arr) {
   return arr;
 }
 
-function subdivide(spec) {
-  const keys = Object.keys(spec);
-  const ranges = keys.map(k => {
-    const v = spec[k];
-    if (typeof v === 'number') {
-      return { from: 0, count: v, step: 1 };
-    }
-    const from = v.from ?? 0;
-    const to = v.to ?? 1;
-    if (v.step != null) {
-      const count = Math.floor(Math.abs(to - from) / Math.abs(v.step)) + 1;
-      return { from, count, step: v.step };
-    }
-    const count = v.size ?? (Math.round(Math.abs(to - from)) + 1);
-    const step = count <= 1 ? 0 : (to - from) / (count - 1);
-    return { from, count, step };
-  });
+function _parseRange(v) {
+  // Bare number: n integers from 0
+  if (typeof v === 'number') {
+    return { from: 0, count: v, step: 1 };
+  }
+  // Array: [from, to] or [from, to, step] — always step-based
+  if (Array.isArray(v)) {
+    const [a, b, s] = v;
+    const step = s ?? (a <= b ? 1 : -1);
+    const count = Math.floor(Math.abs(b - a) / Math.abs(step)) + 1;
+    return { from: a, count, step };
+  }
+  // Object: {from, to, n, steps, step}
+  const from = v.from ?? 0;
+  const hasTo = v.to != null;
+  const hasN = v.n != null;
+  const hasSteps = v.steps != null;
+  const hasStep = v.step != null;
 
+  // n + step (no to needed) → derive count from n
+  if (hasN && hasStep && !hasTo) {
+    return { from, count: v.n, step: v.step };
+  }
+  // steps + step (no to needed)
+  if (hasSteps && hasStep && !hasTo) {
+    return { from, count: v.steps + 1, step: v.step };
+  }
+
+  const to = v.to ?? 1;
+
+  // step-based: count derived from range
+  if (hasStep) {
+    const count = Math.floor(Math.abs(to - from) / Math.abs(v.step)) + 1;
+    return { from, count, step: v.step };
+  }
+  // n: exact point count
+  if (hasN) {
+    const step = v.n <= 1 ? 0 : (to - from) / (v.n - 1);
+    return { from, count: v.n, step };
+  }
+  // steps: interval count
+  if (hasSteps) {
+    const count = v.steps + 1;
+    const step = v.steps <= 0 ? 0 : (to - from) / v.steps;
+    return { from, count, step };
+  }
+  // Bare {from, to} — default to step of 1 (or -1)
+  const step = from <= to ? 1 : -1;
+  const count = Math.floor(Math.abs(to - from) / Math.abs(step)) + 1;
+  return { from, count, step };
+}
+
+function table(spec) {
+  const keys = Object.keys(spec);
+  const ranges = keys.map(k => _parseRange(spec[k]));
   const items = [];
 
   function recurse(depth, obj) {
@@ -276,6 +270,9 @@ function subdivide(spec) {
   recurse(0, {});
   return _attachMapWith(items);
 }
+
+// Legacy alias
+const subdivide = table;
 
 // ── 3D Array Helpers ─────────────────────────────────────────────
 

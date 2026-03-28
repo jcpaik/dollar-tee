@@ -15,7 +15,8 @@
 // Beats:   $beat  $loop  $beat1–$beat8  $beats[i]  tween($beat1, 0, 100, "outCubic")
 //          $beat1.ease("outCubic")  $beat1.n (count)  $beat1.t (elapsed)
 // Render:  render(Fill('red'), Circle(x,y,r))  — call anywhere, multiple times
-// Space:   subdivide({t: {from: 0, to: 1, size: 60}})  — parameter array
+// Table:   table({t: {n: 60}})  — 60 points from 0 to 1
+//          table({i: 10})  table({i: [0, 10, 3]})  table({x: {to: 100, step: 10}})
 //          .mapWith(({t}) => ({angle: t * TWO_PI}))     — derive new fields
 
 render(Bg('#0a0a1a'))

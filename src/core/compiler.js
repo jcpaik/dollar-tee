@@ -1,4 +1,4 @@
-// Compiler — takes user code (string), returns a draw(ctx, t, W, H) function.
+// Compiler — takes user code (string), returns a draw function.
 // All stdlib names are injected as local variables so user code can reference
 // them directly (no destructuring needed).
 // render() can be called anywhere; return [...] still works as fallback.
@@ -64,18 +64,17 @@ function transformState(code) {
 
 export function compile(code, stdlib, state, p5Instance) {
   const names = Object.keys(stdlib);
-  // Inject render() as a local that captures ctx at call time
   const transformed = transformState(transformProbe(code));
-  const wrapped = 'const render = (...items) => __renderScene__(ctx, items);\n' + transformed;
-  const fn = new Function('ctx', '__renderScene__', '__state__', 'p', ...names, wrapped);
+  const wrapped = 'const render = (...items) => __renderScene__(items);\n' + transformed;
+  const fn = new Function('__renderScene__', '__state__', 'p', ...names, wrapped);
 
-  return (ctx) => {
+  return () => {
     // Re-evaluate stdlib values each frame so reactive getters ($t, $mouseX, etc.) are current
     const values = Object.values(stdlib);
-    const result = fn(ctx, renderScene, state, p5Instance, ...values);
+    const result = fn(renderScene, state, p5Instance, ...values);
     // Backward compat: return [...] still renders
     if (Array.isArray(result)) {
-      renderScene(ctx, result);
+      renderScene(result);
     }
   };
 }

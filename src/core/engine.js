@@ -3,8 +3,7 @@
 
 import { updateReactiveState } from './stdlib.js';
 
-export function createEngine(canvas, p5Instance) {
-  const ctx = canvas.getContext('2d');
+export function createEngine(p5Instance) {
   const p = p5Instance;
   const startTime = performance.now();
   let drawFn = () => {};
@@ -24,13 +23,11 @@ export function createEngine(canvas, p5Instance) {
     if (!running) return;
     const t = getTime();
     if (preTickCb) preTickCb(t);
-    const W = p ? p.width : canvas.width;
-    const H = p ? p.height : canvas.height;
 
-    updateReactiveState(t, W, H, p);
+    updateReactiveState(t, p.width, p.height, p);
 
     try {
-      drawFn(ctx);
+      drawFn();
     } catch (e) {
       if (errorCb) errorCb(e);
     }
@@ -43,7 +40,6 @@ export function createEngine(canvas, p5Instance) {
     start()       { running = true; requestAnimationFrame(loop); },
     stop()        { running = false; },
     getTime,
-    getCtx()      { return ctx; },
     getP5()       { return p; },
     getState()    { return state; },
     setDraw(fn)   { drawFn = fn; },

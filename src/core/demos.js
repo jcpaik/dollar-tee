@@ -1,5 +1,5 @@
 // Demo sketches — each is a code string that gets eval'd.
-// User code receives: ctx and all stdlib names as locals.
+// User code receives: all stdlib names as locals (including ctx = p5.drawingContext).
 
 export const DEMOS = {
 

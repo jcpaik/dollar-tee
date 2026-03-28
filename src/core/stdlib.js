@@ -24,7 +24,8 @@ import {
 } from '../lib/easing.js';
 
 // ── p5 instance (set once during init) ────────────────────────────
-export function setP5(p) { setRendererP5(p); }
+let _p5 = null;
+export function setP5(p) { _p5 = p; setRendererP5(p); }
 
 // ── Reactive globals (updated each frame by the engine) ──────────
 let _reactiveState = { $t: 0, $width: 0, $height: 0, $mouseX: 0, $mouseY: 0 };
@@ -294,7 +295,7 @@ function make3D(nx, ny, nz, fillFn) {
 
 // ── draw() — explicit render call for imperative+declarative mix ─
 
-function draw(ctx, items) { renderScene(ctx, items); }
+function draw(items) { renderScene(items); }
 
 // ── Export everything as a flat object ────────────────────────────
 
@@ -307,6 +308,7 @@ export const stdlib = {
   get $mouseY() { return _reactiveState.$mouseY; },
   get $mouse() { return vec2(_reactiveState.$mouseX, _reactiveState.$mouseY); },
   get $center() { return vec2(_reactiveState.$width / 2, _reactiveState.$height / 2); },
+  get ctx() { return _p5.drawingContext; },
 
   // Math
   If, lerp, clamp, map,

@@ -18,13 +18,13 @@ const DEFAULT_STATE = {
 
 // ── Primary flow: traverse scene array ──────────────────────────
 
-export function renderScene(ctx, items, state) {
+export function renderScene(items, state) {
   if (!state) state = { ...DEFAULT_STATE };
 
   for (const item of items) {
     if (Array.isArray(item)) {
       _p5.push();
-      renderScene(ctx, item, { ...state });
+      renderScene(item, { ...state });
       _p5.pop();
       continue;
     }
@@ -35,19 +35,19 @@ export function renderScene(ctx, items, state) {
     }
 
     if (item?._dir) {
-      applyDirective(ctx, item, state);
+      applyDirective(item, state);
       continue;
     }
 
     if (item?.type) {
-      drawShape(ctx, item, state);
+      drawShape(item, state);
     }
   }
 }
 
 // ── Directive handling ──────────────────────────────────────────
 
-function applyDirective(ctx, item, state) {
+function applyDirective(item, state) {
   if (item.action === 'bg') {
     _p5.background(item.value);
     return;
@@ -80,7 +80,7 @@ function applyDirective(ctx, item, state) {
   // Clip action — draw mask shape inside beginClip/endClip
   if (item.action === 'clip') {
     _p5.beginClip({ invert: item.invert });
-    drawShape(ctx, item.shape, state);
+    drawShape(item.shape, state);
     _p5.endClip();
     return;
   }
@@ -104,7 +104,7 @@ function applyDirective(ctx, item, state) {
 
 // ── Shape drawing ──────────────────────────────────────────────
 
-function drawShape(ctx, shape, state) {
+function drawShape(shape, state) {
   const p = _p5;
 
   const prevAlpha = p.drawingContext.globalAlpha;

@@ -108,6 +108,9 @@ editor.onChange(() => {
   }
 });
 
+// Slider changes recompile immediately (no debounce)
+editor.onSliderChange(() => run());
+
 // ── Ctrl-Enter to run, Cmd-S to save ──
 
 let currentSketchName = null;

@@ -1,7 +1,9 @@
 // vec.js — Immutable 2D vectors. All operations return new vectors.
 
 class Vec2 {
-  constructor(x, y) { this.x = x; this.y = y; }
+  constructor(x, y) { this.x = x; this.y = y; this[0] = x; this[1] = y; }
+  get length() { return 2; }
+  *[Symbol.iterator]() { yield this.x; yield this.y; }
 
   add(b)     { return new Vec2(this.x + b.x, this.y + b.y); }
   sub(b)     { return new Vec2(this.x - b.x, this.y - b.y); }
@@ -20,6 +22,7 @@ class Vec2 {
   toString() { return `vec2(${this.x}, ${this.y})`; }
 }
 
+export { Vec2 };
 export function vec2(x, y = 0) { return new Vec2(x, y); }
 
 vec2.fromAngle = (a, r = 1) => new Vec2(Math.cos(a) * r, Math.sin(a) * r);

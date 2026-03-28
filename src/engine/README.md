@@ -7,8 +7,9 @@
 The engine runs a `requestAnimationFrame` (rAF) loop. Each frame:
 
 1. Get current time `t` (from wall clock or audio source)
-2. Call `drawFn(ctx)`
-3. Schedule next frame
+2. Update reactive state (`$time`, `$width`, `$height`, `$mouse`, etc.)
+3. Call `drawFn()`
+4. Schedule next frame
 
 The loop never stops. It's always ticking.
 
@@ -62,9 +63,9 @@ render(fill('red'), circle(W/2, H/2, 100 + 50 * sin(t)))
 
 `compile()` produces (roughly):
 ```js
-function anonymous(ctx, t, W, H, __renderScene__, fill, circle, sin, ...) {
-  const render = (...items) => __renderScene__(ctx, items);
-  render(fill('red'), circle(W/2, H/2, 100 + 50 * sin(t)))
+function anonymous(__renderScene__, __state__, p, fill, circle, sin, $time, ...) {
+  const render = (...items) => __renderScene__(items);
+  render(fill('red'), circle($width/2, $height/2, 100 + 50 * sin($time)))
 }
 ```
 
@@ -94,14 +95,14 @@ Per-frame cost:
 
 ## Future: Closure State
 
-Currently `drawFn` is stateless — pure function of `t`. No frame-to-frame memory.
+Currently `drawFn` is stateless — pure function of reactive globals. No frame-to-frame memory.
 
 With closure state, user code would look like:
 ```js
 let particles = []
 
-return (ctx, t, W, H) => {
-  particles.push({x: Math.random() * W, y: Math.random() * H})
+return () => {
+  particles.push({x: Math.random() * $width, y: Math.random() * $height})
   // draw particles...
 }
 ```

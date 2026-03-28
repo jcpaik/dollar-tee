@@ -318,6 +318,19 @@ function make3D(nx, ny, nz, fillFn) {
   return arr;
 }
 
+// ── zip / zipWith — combine multiple arrays element-wise ────────
+
+function zip(...arrays) {
+  const len = Math.min(...arrays.map(a => a.length));
+  return Array.from({ length: len }, (_, i) => arrays.map(a => a[i]));
+}
+
+function zipWith(...args) {
+  const fn = args.pop();
+  const len = Math.min(...args.map(a => a.length));
+  return Array.from({ length: len }, (_, i) => fn(...args.map(a => a[i])));
+}
+
 // ── draw() — explicit render call for imperative+declarative mix ─
 
 function draw(items) { renderScene(items); }
@@ -378,7 +391,31 @@ export const stdlib = {
   vec2, complex,
 
   // Helpers
-  val, make3D, draw, range, probe,
+  val, make3D, draw, range, probe, zip, zipWith,
+
+  // p5 constants — text alignment
+  LEFT: 'left', CENTER: 'center', RIGHT: 'right',
+  TOP: 'top', BOTTOM: 'bottom', BASELINE: 'alphabetic',
+
+  // p5 constants — text style
+  NORMAL: 'normal', BOLD: 'bold', ITALIC: 'italic', BOLDITALIC: 'bold italic',
+
+  // p5 constants — stroke cap/join
+  ROUND: 'round', SQUARE: 'square', PROJECT: 'square',
+  MITER: 'miter', BEVEL: 'bevel',
+
+  // p5 constants — rect/ellipse mode
+  CORNER: 'corner', CORNERS: 'corners', RADIUS: 'radius',
+  // CENTER already defined above
+
+  // p5 constants — blend modes (renderer looks up _p5[value.toUpperCase()])
+  BLEND: 'blend', ADD: 'add', DARKEST: 'darkest', LIGHTEST: 'lightest',
+  DIFFERENCE: 'difference', EXCLUSION: 'exclusion', MULTIPLY: 'multiply',
+  SCREEN: 'screen', OVERLAY: 'overlay', HARD_LIGHT: 'hard_light',
+  SOFT_LIGHT: 'soft_light', DODGE: 'dodge', BURN: 'burn',
+
+  // p5 constants — arc mode
+  OPEN: 'open', CHORD: 'chord', PIE: 'pie',
 
   // Math builtins
   PI: Math.PI, TWO_PI: Math.PI * 2, HALF_PI: Math.PI / 2,

@@ -18,7 +18,7 @@ import { setupTransport } from './transport-ui.js';
 const p5Instance = await createP5(document.getElementById('canvas-pane'));
 setP5(p5Instance);
 
-const engine   = createEngine(p5Instance.canvas, p5Instance);
+const engine   = createEngine(p5Instance);
 const audio    = createAudio();
 const timeline = createTimeline(document.getElementById('beat-grid'));
 
@@ -41,7 +41,7 @@ function run() {
     );
     const drawFn = compile(editor.getCode(), allStdlib, engine.getState(), p5Instance);
     updateReactiveState(engine.getTime(), p5Instance.width, p5Instance.height, p5Instance);
-    drawFn(engine.getCtx());
+    drawFn();
     engine.setDraw(drawFn);
     errorBar.style.display = 'none';
   } catch (e) {

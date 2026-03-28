@@ -3,7 +3,7 @@
 
 import { Color } from '../lib/color.js';
 import { $loop, $beat, $beats, tween } from '../audio/intervals.js';
-import { vec2 } from '../lib/vec.js';
+import { vec2, Vec2 } from '../lib/vec.js';
 import { complex } from '../lib/complex.js';
 import { probe } from './probe.js';
 import { setRendererP5, renderScene } from './renderer.js';
@@ -24,13 +24,14 @@ import {
 } from '../lib/easing.js';
 
 // ── p5 instance (set once during init) ────────────────────────────
-export function setP5(p) { setRendererP5(p); }
+let _p5 = null;
+export function setP5(p) { _p5 = p; setRendererP5(p); }
 
 // ── Reactive globals (updated each frame by the engine) ──────────
-let _reactiveState = { $t: 0, $width: 0, $height: 0, $mouseX: 0, $mouseY: 0 };
+let _reactiveState = { $time: 0, $width: 0, $height: 0, $mouseX: 0, $mouseY: 0 };
 
 export function updateReactiveState(t, W, H, p) {
-  _reactiveState.$t = t;
+  _reactiveState.$time = t;
   _reactiveState.$width = W;
   _reactiveState.$height = H;
   _reactiveState.$mouseX = p ? p.mouseX : 0;
@@ -75,32 +76,51 @@ function noise2(x, y) {
   );
 }
 
-// ── Shape Constructors (return descriptor objects) ────────────────
+// ── vec2 detection ───────────────────────────────────────────────
+const _isV = (v) => v instanceof Vec2;
 
-function Circle(x, y, r) { return { type: 'circle', x, y, r }; }
-function Line(x1, y1, x2, y2) { return { type: 'line', x1, y1, x2, y2 }; }
-function Rect(x, y, w, h) { return { type: 'rect', x, y, w, h }; }
-function Polygon(pts) { return { type: 'polygon', pts }; }
-function Ngon(x, y, r, n, angle = 0) {
-  const pts = [];
-  for (let i = 0; i < n; i++) {
-    const a = angle + (i / n) * Math.PI * 2;
-    pts.push([x + Math.cos(a) * r, y + Math.sin(a) * r]);
-  }
-  return Polygon(pts);
+// ── Shape Constructors (return descriptor objects) ────────────────
+// All position args accept vec2 or separate (x, y) numbers.
+
+function Circle(a, b, c) {
+  if (_isV(a)) return { type: 'circle', x: a.x, y: a.y, r: b };
+  return { type: 'circle', x: a, y: b, r: c };
 }
-function Arc(x, y, r, start, end) { return { type: 'arc', x, y, r, start, end }; }
-function Ellipse(x, y, rx, ry) { return { type: 'ellipse', x, y, rx, ry }; }
-function Text(str, x, y, size) { return { type: 'text', str, x, y, size: size || 16 }; }
+function Line(a, b, c, d) {
+  if (_isV(a)) return { type: 'line', x1: a.x, y1: a.y, x2: b.x, y2: b.y };
+  return { type: 'line', x1: a, y1: b, x2: c, y2: d };
+}
+function Rect(a, b, c, d) {
+  if (_isV(a)) return { type: 'rect', x: a.x, y: a.y, w: b, h: c };
+  return { type: 'rect', x: a, y: b, w: c, h: d };
+}
+function Polygon(pts) { return { type: 'polygon', pts }; }
+function Arc(a, b, c, d, e) {
+  if (_isV(a)) return { type: 'arc', x: a.x, y: a.y, r: b, start: c, end: d };
+  return { type: 'arc', x: a, y: b, r: c, start: d, end: e };
+}
+function Ellipse(a, b, c, d) {
+  if (_isV(a)) return { type: 'ellipse', x: a.x, y: a.y, rx: b, ry: c };
+  return { type: 'ellipse', x: a, y: b, rx: c, ry: d };
+}
+function Text(str, a, b, c) {
+  if (_isV(a)) return { type: 'text', str, x: a.x, y: a.y, size: b || 16 };
+  return { type: 'text', str, x: a, y: b, size: c || 16 };
+}
 function Shape(points, close = true) { return { type: 'shape', points, close }; }
 function BezierShape(points) { return { type: 'bezierShape', points }; }
-function Bezier(x1, y1, cx1, cy1, cx2, cy2, x2, y2) {
-  return { type: 'bezier', x1, y1, cx1, cy1, cx2, cy2, x2, y2 };
+function Bezier(a, b, c, d, e, f, g, h) {
+  if (_isV(a)) return { type: 'bezier', x1: a.x, y1: a.y, cx1: b.x, cy1: b.y, cx2: c.x, cy2: c.y, x2: d.x, y2: d.y };
+  return { type: 'bezier', x1: a, y1: b, cx1: c, cy1: d, cx2: e, cy2: f, x2: g, y2: h };
 }
-function QuadCurve(x1, y1, cx, cy, x2, y2) {
-  return { type: 'quadCurve', x1, y1, cx, cy, x2, y2 };
+function QuadCurve(a, b, c, d, e, f) {
+  if (_isV(a)) return { type: 'quadCurve', x1: a.x, y1: a.y, cx: b.x, cy: b.y, x2: c.x, y2: c.y };
+  return { type: 'quadCurve', x1: a, y1: b, cx: c, cy: d, x2: e, y2: f };
 }
-function ImageShape(img, x, y, w, h) { return { type: 'image', img, x, y, w, h }; }
+function ImageShape(img, a, b, c, d) {
+  if (_isV(a)) return { type: 'image', img, x: a.x, y: a.y, w: b, h: c };
+  return { type: 'image', img, x: a, y: b, w: c, h: d };
+}
 
 // ── Style Directives ─────────────────────────────────────────────
 // These go into the scene array alongside shapes.
@@ -122,9 +142,16 @@ function Font(f)        { return { _dir: true, prop: 'font',      value: f }; }
 function Alpha(a)       { return { _dir: true, prop: 'globalAlpha', value: a }; }
 
 // Transform directives
-function Translate(x, y) { return { _dir: true, action: 'translate', x, y }; }
+function Translate(a, b) {
+  if (_isV(a)) return { _dir: true, action: 'translate', x: a.x, y: a.y };
+  return { _dir: true, action: 'translate', x: a, y: b };
+}
 function Rotate(angle)    { return { _dir: true, action: 'rotate', angle }; }
-function Scale(x, y)      { if (y === undefined) y = x; return { _dir: true, action: 'scale', x, y }; }
+function Scale(a, b) {
+  if (_isV(a)) return { _dir: true, action: 'scale', x: a.x, y: a.y };
+  if (b === undefined) b = a;
+  return { _dir: true, action: 'scale', x: a, y: b };
+}
 
 // Style directives
 function StrokeCap(cap)     { return { _dir: true, action: 'strokeCap', value: cap }; }
@@ -145,6 +172,9 @@ function NoTint()       { return { _dir: true, action: 'noTint' }; }
 
 // Filter directive
 function Filter(type, param) { return { _dir: true, action: 'filter', type, param }; }
+
+// Clipping directive — clips subsequent draws to the given shape
+function Clip(shape, opts) { return { _dir: true, action: 'clip', shape, invert: opts?.invert ?? false }; }
 
 // ── val() — identity for now, future: CodeMirror slider widget ───
 
@@ -265,17 +295,20 @@ function make3D(nx, ny, nz, fillFn) {
 
 // ── draw() — explicit render call for imperative+declarative mix ─
 
-function draw(ctx, items) { renderScene(ctx, items); }
+function draw(items) { renderScene(items); }
 
 // ── Export everything as a flat object ────────────────────────────
 
 export const stdlib = {
   // Reactive globals (getters → always current)
-  get $t() { return _reactiveState.$t; },
+  get $time() { return _reactiveState.$time; },
   get $width() { return _reactiveState.$width; },
   get $height() { return _reactiveState.$height; },
   get $mouseX() { return _reactiveState.$mouseX; },
   get $mouseY() { return _reactiveState.$mouseY; },
+  get $mouse() { return vec2(_reactiveState.$mouseX, _reactiveState.$mouseY); },
+  get $center() { return vec2(_reactiveState.$width / 2, _reactiveState.$height / 2); },
+  get ctx() { return _p5.drawingContext; },
 
   // Math
   If, lerp, clamp, map,
@@ -296,7 +329,7 @@ export const stdlib = {
   cubicBezier, spring,
 
   // Shapes
-  Circle, Line, Rect, Polygon, Ngon, Arc, Ellipse, Text,
+  Circle, Line, Rect, Polygon, Arc, Ellipse, Text,
   Shape, BezierShape, Bezier, QuadCurve,
   Image: ImageShape,
 
@@ -305,7 +338,7 @@ export const stdlib = {
   Translate, Rotate, Scale,
   StrokeCap, StrokeJoin, BlendMode, RectMode, EllipseMode,
   TextSize, TextAlign, TextFont, TextStyle,
-  Tint, NoTint, Filter,
+  Tint, NoTint, Filter, Clip,
 
   // Color
   Color,

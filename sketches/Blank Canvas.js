@@ -1,5 +1,5 @@
 // Your blank canvas — go wild!
-// Available: ctx, $t (seconds), $width, $height, $mouseX, $mouseY
+// Available: ctx, $time (seconds), $width, $height, $mouseX, $mouseY
 // Shapes:  Circle(x,y,r)  Rect(x,y,w,h)  Line(x1,y1,x2,y2)  Polygon(pts)
 //          Ngon(x,y,r,sides,angle)  Arc(x,y,r,start,end)  Ellipse(x,y,rx,ry)
 //          Shape(pts)  Bezier(x1,y1,cx1,cy1,cx2,cy2,x2,y2)  Image(img,x,y,w,h)

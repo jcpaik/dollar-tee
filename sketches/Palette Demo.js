@@ -33,7 +33,7 @@ const mixing = subdivide({s: {from: 0, to: 1, size: 11}})
 const rainbow = subdivide({i: 60})
   .mapWith(({i}) => ({
     s: i / 60,
-    angle: (i / 60) * TWO_PI + $t * 0.5,
+    angle: (i / 60) * TWO_PI + $time * 0.5,
   }))
   .map(({s, angle}) => [
     Fill(Color.rainbow(s)), NoStroke(),

@@ -9,12 +9,12 @@ ctx.fillRect(0, 0, $width, $height)
 for (let z = 0; z < 3; z++) {
   for (let y = N - 1; y >= 0; y--) {
     for (let x = 0; x < N; x++) {
-      const wave = sin($t + x * 0.5 + y * 0.5 + z) * 0.5 + 0.5
+      const wave = sin($time + x * 0.5 + y * 0.5 + z) * 0.5 + 0.5
       if (wave < 0.3) continue
 
       const sx = $width / 2 + isoX(x, y)
       const sy = $height * 0.35 + isoY(x, y, z)
-      const hue = $t * 40 + x * 30 + z * 60
+      const hue = $time * 40 + x * 30 + z * 60
 
       // Top face
       ctx.fillStyle = Color.hsl(hue, 70, 35 + wave * 30).toCSS()

@@ -2,8 +2,8 @@
 const waves = subdivide({j: 40, i: 80})
   .mapWith(({j, i}) => {
     const y0 = (j / 40) * $height
-    const amp = sin($t * 0.5 + j * 0.2) * 30 + 20
-    const phase = i * 0.15 + j * 0.1 + $t
+    const amp = sin($time * 0.5 + j * 0.2) * 30 + 20
+    const phase = i * 0.15 + j * 0.1 + $time
     return {
       x: (i / 80) * $width,
       y: y0 + sin(phase) * amp,
@@ -12,7 +12,7 @@ const waves = subdivide({j: 40, i: 80})
     }
   })
   .map(({j, x, y, xNext, yNext}) => [
-    Stroke(Color.hsl(j * 8 + $t * 30, 70, 50)),
+    Stroke(Color.hsl(j * 8 + $time * 30, 70, 50)),
     LineWidth(1.5), NoFill(), StrokeCap(p.SQUARE),
     Line(x, y, xNext, yNext),
   ])

@@ -1,7 +1,7 @@
 // Horizontal line locator — translucent grey line, draggable vertically.
 // Returns y coordinate (number).
 
-export function createHorizontalLocator(name, y, overlay) {
+export function createHorizontalLocator(name, y, overlay, onDragEnd) {
   const el = document.createElement('div');
   el.className = 'locator-hline';
   el.innerHTML = `
@@ -41,6 +41,7 @@ export function createHorizontalLocator(name, y, overlay) {
       updateDOM();
     }
     function onUp() {
+      if (onDragEnd) onDragEnd();
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
     }

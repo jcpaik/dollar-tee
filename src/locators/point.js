@@ -3,7 +3,7 @@
 
 import { vec2 } from '../lib/vec.js';
 
-export function createPointLocator(name, x, y, overlay) {
+export function createPointLocator(name, x, y, overlay, onDragEnd) {
   const el = document.createElement('div');
   el.className = 'locator-point';
   el.innerHTML = `
@@ -70,6 +70,7 @@ export function createPointLocator(name, x, y, overlay) {
       el.classList.remove('dragging');
       hovered = false;
       updateDOM();
+      if (onDragEnd) onDragEnd();
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
     }

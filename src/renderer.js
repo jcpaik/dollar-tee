@@ -171,17 +171,9 @@ function drawShape(shape, state) {
       }
       break;
     case 'text': {
-      if (state.textSize) {
-        p.textSize(state.textSize);
-        p.textFont(state.textFont || 'monospace');
-      } else {
-        const fontStr = state.font || `${shape.size || 16}px monospace`;
-        const sizeMatch = fontStr.match(/(\d+)px/);
-        if (sizeMatch) p.textSize(parseInt(sizeMatch[1]));
-        const familyMatch = fontStr.match(/\d+px\s+(.+)/);
-        if (familyMatch) p.textFont(familyMatch[1]);
-        else p.textFont('monospace');
-      }
+      const size = state.textSize || shape.size || 16;
+      p.textSize(size);
+      p.textFont(state.textFont || state.font || 'monospace');
       p.text(shape.str, shape.x, shape.y);
       break;
     }

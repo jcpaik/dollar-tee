@@ -1,7 +1,7 @@
 // Vertical line locator — translucent grey line, draggable horizontally.
 // Returns x coordinate (number).
 
-export function createVerticalLocator(name, x, overlay) {
+export function createVerticalLocator(name, x, overlay, onDragEnd) {
   const el = document.createElement('div');
   el.className = 'locator-vline';
   el.innerHTML = `
@@ -43,6 +43,7 @@ export function createVerticalLocator(name, x, overlay) {
       updateDOM();
     }
     function onUp() {
+      if (onDragEnd) onDragEnd();
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
     }

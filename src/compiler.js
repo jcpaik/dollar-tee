@@ -62,19 +62,51 @@ function transformState(code) {
   return code.replace(/\$\$([a-zA-Z_][a-zA-Z0-9_]*)/g, '__state__["$1"]');
 }
 
+// Number of lines the compiler prepends before user code.
+const PREAMBLE_LINES = 1;
+
+// Extract user-code line number from an error.
+// SyntaxError: browsers embed line info in the message.
+// Runtime errors: parse the <anonymous>:line:col from the stack.
+function extractErrorLine(e) {
+  // Try stack trace first (runtime errors): <anonymous>:LINE:COL
+  if (e.stack) {
+    const m = e.stack.match(/<anonymous>:(\d+):(\d+)/);
+    if (m) return { line: parseInt(m[1]) - PREAMBLE_LINES, col: parseInt(m[2]) };
+  }
+  // SyntaxError: some browsers put (LINE:COL) in the message
+  const m2 = e.message && e.message.match(/\((\d+):(\d+)\)/);
+  if (m2) return { line: parseInt(m2[1]) - PREAMBLE_LINES, col: parseInt(m2[2]) };
+  return null;
+}
+
 export function compile(code, stdlib, state, p5Instance) {
   const names = Object.keys(stdlib);
   const transformed = transformState(transformProbe(code));
   const wrapped = 'const render = (...items) => __renderScene__(items);\n' + transformed;
-  const fn = new Function('__renderScene__', '__state__', 'p', ...names, wrapped);
+
+  let fn;
+  try {
+    fn = new Function('__renderScene__', '__state__', 'p', ...names, wrapped);
+  } catch (e) {
+    const loc = extractErrorLine(e);
+    if (loc && loc.line > 0) e.loc = loc;
+    throw e;
+  }
 
   return () => {
     // Re-evaluate stdlib values each frame so reactive getters ($time, $mouse, etc.) are current
     const values = Object.values(stdlib);
-    const result = fn(renderScene, state, p5Instance, ...values);
-    // Backward compat: return [...] still renders
-    if (Array.isArray(result)) {
-      renderScene(result);
+    try {
+      const result = fn(renderScene, state, p5Instance, ...values);
+      // Backward compat: return [...] still renders
+      if (Array.isArray(result)) {
+        renderScene(result);
+      }
+    } catch (e) {
+      const loc = extractErrorLine(e);
+      if (loc && loc.line > 0) e.loc = loc;
+      throw e;
     }
   };
 }

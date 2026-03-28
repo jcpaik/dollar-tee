@@ -13,7 +13,9 @@ import { fetchSketches, listSketches, getSketchCode, saveSketch } from './sketch
 import { createSketchSelector } from './demo-selector.js';
 import { setupTransport } from './audio/transport.js';
 import { setupLayout } from './ui/layout.js';
-import { setupLocators, getLocatorGetters, syncOverlay, toggleLocators } from './locators/main.js';
+import { setupLocators, getLocatorGetters, syncOverlay, toggleLocators, restoreLocators } from './locators/main.js';
+import { load, save as saveUI } from './ui/persist.js';
+import { EditorSelection } from '@codemirror/state';
 
 // ── Create subsystems ──
 
@@ -48,7 +50,7 @@ function run() {
     engine.setDraw(drawFn);
     errorBar.style.display = 'none';
   } catch (e) {
-    errorBar.textContent = e.message;
+    errorBar.textContent = e.loc ? `Line ${e.loc.line}: ${e.message}` : e.message;
     errorBar.style.display = 'block';
   }
 }
@@ -60,6 +62,10 @@ setupLocators(document.getElementById('canvas-pane'), run);
 // ── Auto-run with debounce ──
 
 const autoRunBox = document.getElementById('auto-run');
+const savedAutoRun = load('autorun');
+if (savedAutoRun !== undefined) autoRunBox.checked = savedAutoRun;
+autoRunBox.addEventListener('change', () => saveUI('autorun', autoRunBox.checked));
+
 let debounceTimer = null;
 editor.onChange(() => {
   if (autoRunBox.checked) {
@@ -83,6 +89,7 @@ selector.rebuild();
 
 selector.onChange((name) => {
   currentSketchName = name;
+  saveUI('sketch', name);
   const code = getSketchCode(name);
   if (code == null) return;
   editor.setCode(code);
@@ -94,6 +101,7 @@ async function save() {
   if (!name) { name = prompt('Save sketch as:'); if (!name) return; }
   await saveSketch(name, editor.getCode());
   currentSketchName = name;
+  saveUI('sketch', name);
   selector.rebuild(name);
   selector.select(name);
 }
@@ -154,17 +162,48 @@ engine.onTick = (t) => {
 };
 
 engine.onError = (e) => {
-  errorBar.textContent = e.message;
+  errorBar.textContent = e.loc ? `Line ${e.loc.line}: ${e.message}` : e.message;
   errorBar.style.display = 'block';
 };
 
+// ── Restore locators ──
+
+restoreLocators(load('locators'));
+
+// ── Cursor persistence ──
+
+function saveCursor() {
+  const sel = editor.view.state.selection.main;
+  saveUI('cursor', {
+    anchor: sel.anchor, head: sel.head,
+    scroll: editor.view.scrollDOM.scrollTop,
+  });
+}
+editor.view.dom.addEventListener('focusout', saveCursor);
+window.addEventListener('beforeunload', saveCursor);
+
 // ── Boot ──
 
-const firstName = listSketches()[0];
-if (firstName) {
-  currentSketchName = firstName;
-  editor.setCode(getSketchCode(firstName));
-  selector.select(firstName);
+const savedSketch = load('sketch');
+const bootSketch = (savedSketch && listSketches().includes(savedSketch))
+  ? savedSketch
+  : listSketches()[0];
+
+if (bootSketch) {
+  currentSketchName = bootSketch;
+  editor.setCode(getSketchCode(bootSketch));
+  selector.select(bootSketch);
+
+  const savedCursor = load('cursor');
+  if (savedCursor && bootSketch === savedSketch) {
+    const docLen = editor.view.state.doc.length;
+    const anchor = Math.min(savedCursor.anchor, docLen);
+    const head = Math.min(savedCursor.head, docLen);
+    editor.view.dispatch({ selection: EditorSelection.range(anchor, head) });
+    if (savedCursor.scroll != null) {
+      requestAnimationFrame(() => { editor.view.scrollDOM.scrollTop = savedCursor.scroll; });
+    }
+  }
 }
 run();
 engine.start();

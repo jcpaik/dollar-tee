@@ -1,10 +1,24 @@
 // Layout — draggable sashes for editor↔canvas and bottom panel.
 
+import { load, save } from './persist.js';
+
 export function setupLayout({ onResize }) {
   const bottomPanel = document.getElementById('bottom-panel');
   const hSash       = document.getElementById('h-sash');
   const vSash       = document.getElementById('v-sash');
   const editorPane  = document.getElementById('editor-pane');
+
+  // ── Restore saved layout ──
+
+  const savedSash = load('sash');
+  if (savedSash !== undefined) editorPane.style.width = savedSash + '%';
+
+  const savedBottom = load('bottom');
+  if (savedBottom !== undefined) {
+    if (savedBottom.collapsed) bottomPanel.classList.add('collapsed');
+    else if (savedBottom.height) bottomPanel.style.height = savedBottom.height + 'px';
+  }
+  onResize();
 
   // ── Horizontal sash — drag to resize bottom panel, snap to close ──
 
@@ -32,6 +46,10 @@ export function setupLayout({ onResize }) {
       hSash.classList.remove('dragging');
       edgeZone.classList.remove('dragging');
       edgeZone.classList.remove('snap');
+      save('bottom', {
+        height: parseInt(bottomPanel.style.height) || 0,
+        collapsed: bottomPanel.classList.contains('collapsed'),
+      });
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
     };
@@ -45,6 +63,10 @@ export function setupLayout({ onResize }) {
   hSash.addEventListener('dblclick', () => {
     bottomPanel.classList.toggle('collapsed');
     if (!bottomPanel.classList.contains('collapsed')) bottomPanel.style.height = '';
+    save('bottom', {
+      height: parseInt(bottomPanel.style.height) || 0,
+      collapsed: bottomPanel.classList.contains('collapsed'),
+    });
     onResize();
   });
 
@@ -75,6 +97,7 @@ export function setupLayout({ onResize }) {
 
     const onUp = () => {
       vSash.classList.remove('dragging');
+      save('sash', parseFloat(editorPane.style.width));
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
     };

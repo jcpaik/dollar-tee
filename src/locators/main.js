@@ -3,6 +3,7 @@
 import { createPointLocator } from './point.js';
 import { createHorizontalLocator } from './horizontal.js';
 import { createVerticalLocator } from './vertical.js';
+import { save } from '../ui/persist.js';
 
 const locators = new Map();  // name → { type, el, getValue(), remove() }
 let overlay = null;
@@ -123,14 +124,28 @@ function hideMenu() {
 
 // ── Locator CRUD ─────────────────────────────────────────────────
 
+function saveLocatorState() {
+  const arr = [];
+  for (const [name, loc] of locators) {
+    const v = loc.getValue();
+    const entry = { name, type: loc.type };
+    if (loc.type === 'point') { entry.x = v.x; entry.y = v.y; }
+    else if (loc.type === 'horizontal') { entry.y = v; }
+    else if (loc.type === 'vertical') { entry.x = v; }
+    arr.push(entry);
+  }
+  save('locators', arr);
+}
+
 function addLocator(type, name, x, y) {
   let locator;
   switch (type) {
-    case 'point':      locator = createPointLocator(name, x, y, overlay); break;
-    case 'horizontal': locator = createHorizontalLocator(name, y, overlay); break;
-    case 'vertical':   locator = createVerticalLocator(name, x, overlay); break;
+    case 'point':      locator = createPointLocator(name, x, y, overlay, saveLocatorState); break;
+    case 'horizontal': locator = createHorizontalLocator(name, y, overlay, saveLocatorState); break;
+    case 'vertical':   locator = createVerticalLocator(name, x, overlay, saveLocatorState); break;
   }
   locators.set(name, locator);
+  saveLocatorState();
   if (onChangeCb) onChangeCb();
 }
 
@@ -139,7 +154,15 @@ function deleteLocator(name) {
   if (locator) {
     locator.remove();
     locators.delete(name);
+    saveLocatorState();
     if (onChangeCb) onChangeCb();
+  }
+}
+
+export function restoreLocators(arr) {
+  if (!arr || !overlay) return;
+  for (const { name, type, x, y } of arr) {
+    addLocator(type, name, x ?? 0, y ?? 0);
   }
 }
 

@@ -76,49 +76,59 @@ function noise2(x, y) {
   );
 }
 
-// ── vec2 detection ───────────────────────────────────────────────
+// ── vec2 / point detection ───────────────────────────────────────
 const _isV = (v) => v instanceof Vec2;
+const _isPt = (v) => _isV(v) || (Array.isArray(v) && v.length >= 2);
+const _px = (v) => _isV(v) ? v.x : v[0];
+const _py = (v) => _isV(v) ? v.y : v[1];
+const _normPts = (pts) => pts.map(p => ({ x: _px(p), y: _py(p) }));
 
 // ── Shape Constructors (return descriptor objects) ────────────────
 // All position args accept vec2 or separate (x, y) numbers.
 
 function Circle(a, b, c) {
-  if (_isV(a)) return { type: 'circle', x: a.x, y: a.y, r: b };
+  if (_isPt(a)) return { type: 'circle', x: _px(a), y: _py(a), r: b };
   return { type: 'circle', x: a, y: b, r: c };
 }
 function Line(a, b, c, d) {
-  if (_isV(a)) return { type: 'line', x1: a.x, y1: a.y, x2: b.x, y2: b.y };
+  // Line(arrayOfPoints) → polyline
+  if (Array.isArray(a) && a.length > 0 && _isPt(a[0])) {
+    return { type: 'polyline', pts: _normPts(a) };
+  }
+  // Line(pt1, pt2) — vec2 or [x,y]
+  if (_isPt(a)) return { type: 'line', x1: _px(a), y1: _py(a), x2: _px(b), y2: _py(b) };
+  // Line(x1, y1, x2, y2)
   return { type: 'line', x1: a, y1: b, x2: c, y2: d };
 }
 function Rect(a, b, c, d) {
-  if (_isV(a)) return { type: 'rect', x: a.x, y: a.y, w: b, h: c };
+  if (_isPt(a)) return { type: 'rect', x: _px(a), y: _py(a), w: b, h: c };
   return { type: 'rect', x: a, y: b, w: c, h: d };
 }
-function Polygon(pts) { return { type: 'polygon', pts }; }
+function Polygon(pts) { return { type: 'polygon', pts: _normPts(pts) }; }
 function Arc(a, b, c, d, e) {
-  if (_isV(a)) return { type: 'arc', x: a.x, y: a.y, r: b, start: c, end: d };
+  if (_isPt(a)) return { type: 'arc', x: _px(a), y: _py(a), r: b, start: c, end: d };
   return { type: 'arc', x: a, y: b, r: c, start: d, end: e };
 }
 function Ellipse(a, b, c, d) {
-  if (_isV(a)) return { type: 'ellipse', x: a.x, y: a.y, rx: b, ry: c };
+  if (_isPt(a)) return { type: 'ellipse', x: _px(a), y: _py(a), rx: b, ry: c };
   return { type: 'ellipse', x: a, y: b, rx: c, ry: d };
 }
 function Text(str, a, b, c) {
-  if (_isV(a)) return { type: 'text', str, x: a.x, y: a.y, size: b || 16 };
+  if (_isPt(a)) return { type: 'text', str, x: _px(a), y: _py(a), size: b || 16 };
   return { type: 'text', str, x: a, y: b, size: c || 16 };
 }
-function Shape(points, close = true) { return { type: 'shape', points, close }; }
+function Shape(points, close = true) { return { type: 'shape', points: _normPts(points), close }; }
 function BezierShape(points) { return { type: 'bezierShape', points }; }
 function Bezier(a, b, c, d, e, f, g, h) {
-  if (_isV(a)) return { type: 'bezier', x1: a.x, y1: a.y, cx1: b.x, cy1: b.y, cx2: c.x, cy2: c.y, x2: d.x, y2: d.y };
+  if (_isPt(a)) return { type: 'bezier', x1: _px(a), y1: _py(a), cx1: _px(b), cy1: _py(b), cx2: _px(c), cy2: _py(c), x2: _px(d), y2: _py(d) };
   return { type: 'bezier', x1: a, y1: b, cx1: c, cy1: d, cx2: e, cy2: f, x2: g, y2: h };
 }
 function QuadCurve(a, b, c, d, e, f) {
-  if (_isV(a)) return { type: 'quadCurve', x1: a.x, y1: a.y, cx: b.x, cy: b.y, x2: c.x, y2: c.y };
+  if (_isPt(a)) return { type: 'quadCurve', x1: _px(a), y1: _py(a), cx: _px(b), cy: _py(b), x2: _px(c), y2: _py(c) };
   return { type: 'quadCurve', x1: a, y1: b, cx: c, cy: d, x2: e, y2: f };
 }
 function ImageShape(img, a, b, c, d) {
-  if (_isV(a)) return { type: 'image', img, x: a.x, y: a.y, w: b, h: c };
+  if (_isPt(a)) return { type: 'image', img, x: _px(a), y: _py(a), w: b, h: c };
   return { type: 'image', img, x: a, y: b, w: c, h: d };
 }
 
@@ -143,12 +153,12 @@ function Alpha(a)       { return { _dir: true, prop: 'globalAlpha', value: a }; 
 
 // Transform directives
 function Translate(a, b) {
-  if (_isV(a)) return { _dir: true, action: 'translate', x: a.x, y: a.y };
+  if (_isPt(a)) return { _dir: true, action: 'translate', x: _px(a), y: _py(a) };
   return { _dir: true, action: 'translate', x: a, y: b };
 }
 function Rotate(angle)    { return { _dir: true, action: 'rotate', angle }; }
 function Scale(a, b) {
-  if (_isV(a)) return { _dir: true, action: 'scale', x: a.x, y: a.y };
+  if (_isPt(a)) return { _dir: true, action: 'scale', x: _px(a), y: _py(a) };
   if (b === undefined) b = a;
   return { _dir: true, action: 'scale', x: a, y: b };
 }

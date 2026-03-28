@@ -123,6 +123,11 @@ function drawShape(shape, state) {
     case 'line':
       p.line(shape.x1, shape.y1, shape.x2, shape.y2);
       break;
+    case 'polyline':
+      p.beginShape();
+      for (const pt of shape.pts) p.vertex(pt.x, pt.y);
+      p.endShape();
+      break;
     case 'ellipse':
       p.ellipse(shape.x, shape.y, Math.max(0, shape.rx) * 2, Math.max(0, shape.ry) * 2);
       break;
@@ -132,12 +137,12 @@ function drawShape(shape, state) {
     case 'polygon':
       if (!shape.pts || shape.pts.length < 2) { p.drawingContext.globalAlpha = prevAlpha; return; }
       p.beginShape();
-      for (const pt of shape.pts) p.vertex(pt[0], pt[1]);
+      for (const pt of shape.pts) p.vertex(pt.x, pt.y);
       p.endShape(p.CLOSE);
       break;
     case 'shape':
       p.beginShape();
-      for (const pt of shape.points) p.vertex(pt[0], pt[1]);
+      for (const pt of shape.points) p.vertex(pt.x, pt.y);
       p.endShape(shape.close ? p.CLOSE : undefined);
       break;
     case 'bezierShape':

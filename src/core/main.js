@@ -8,10 +8,9 @@ import { createTimeline, FIRST_BEAT } from '../audio/timeline.js';
 import { compile } from './compiler.js';
 import { stdlib, setP5, updateReactiveState } from './stdlib.js';
 import { probe } from './probe.js';
-import { DEMOS } from './demos.js';
 import { updateLoopTime } from '../audio/intervals.js';
-import { listSketches, saveSketch, loadSketch } from './sketch-store.js';
-import { createDemoSelector } from './demo-selector.js';
+import { fetchSketches, listSketches, getSketchCode, saveSketch } from './sketch-store.js';
+import { createSketchSelector } from './demo-selector.js';
 import { setupTransport } from './transport-ui.js';
 
 // ── Create subsystems ──
@@ -63,37 +62,33 @@ editor.onChange(() => {
 });
 editor.onSliderChange(() => run());
 
-// ── Demo + sketch selector ──
+// ── Sketch selector ──
 
 let currentSketchName = null;
 
-const selector = createDemoSelector(
+await fetchSketches();
+
+const selector = createSketchSelector(
   document.getElementById('demo-select'),
-  DEMOS,
   listSketches
 );
+selector.rebuild();
 
-selector.onChange((val) => {
-  if (val.startsWith('demo:')) {
-    currentSketchName = val.slice(5);
-    editor.setCode(DEMOS[currentSketchName]);
-    run();
-  } else if (val.startsWith('sketch:')) {
-    currentSketchName = val.slice(7);
-    const code = loadSketch(currentSketchName);
-    if (code == null) return;
-    editor.setCode(code);
-    run();
-  }
+selector.onChange((name) => {
+  currentSketchName = name;
+  const code = getSketchCode(name);
+  if (code == null) return;
+  editor.setCode(code);
+  run();
 });
 
-function save() {
+async function save() {
   let name = currentSketchName;
   if (!name) { name = prompt('Save sketch as:'); if (!name) return; }
-  saveSketch(name, editor.getCode());
+  await saveSketch(name, editor.getCode());
   currentSketchName = name;
-  selector.rebuild('sketch:' + name);
-  selector.select('sketch:' + name);
+  selector.rebuild(name);
+  selector.select(name);
 }
 
 // ── Keyboard shortcuts ──
@@ -155,6 +150,11 @@ engine.onError = (e) => {
 
 // ── Boot ──
 
-editor.setCode(DEMOS[Object.keys(DEMOS)[0]]);
+const firstName = listSketches()[0];
+if (firstName) {
+  currentSketchName = firstName;
+  editor.setCode(getSketchCode(firstName));
+  selector.select(firstName);
+}
 run();
 engine.start();

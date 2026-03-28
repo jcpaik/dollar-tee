@@ -22,7 +22,6 @@ body {
   width: 50%;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid #3a3a3a;
 }
 
 #toolbar {
@@ -99,10 +98,24 @@ body {
   white-space: pre-wrap;
 }
 
+/* ── Vertical sash (editor ↔ canvas) ─────────────────────────── */
+
+#v-sash {
+  width: 4px;
+  cursor: ew-resize;
+  background: transparent;
+  flex-shrink: 0;
+}
+
+#v-sash:hover,
+#v-sash.dragging {
+  background: #ff764d;
+}
+
 /* ── Canvas pane ──────────────────────────────────────────────── */
 
 #canvas-pane {
-  width: 50%;
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -137,9 +150,9 @@ canvas {
   display: block;
 }
 
-/* ── Transport bar ───────────────────────────────────────────── */
+/* ── Bottom panel ────────────────────────────────────────────── */
 
-#transport {
+#bottom-panel {
   display: flex;
   flex-direction: column;
   background: #222;
@@ -149,23 +162,83 @@ canvas {
   overflow: hidden;
 }
 
-#transport.collapsed #transport-inner {
-  display: none;
+#bottom-panel.collapsed {
+  height: 0 !important;
+  border-top: none;
+  overflow: hidden;
 }
 
-#transport-sash {
+#h-sash {
   height: 4px;
   cursor: ns-resize;
   background: transparent;
   flex-shrink: 0;
 }
 
-#transport-sash:hover,
-#transport-sash.dragging {
+#h-sash:hover,
+#h-sash.dragging {
   background: #ff764d;
 }
 
-#transport-inner {
+/* Edge zone — invisible grab strip at bottom of viewport.
+   Shows orange when hovering while collapsed, or when drag enters snap zone. */
+#edge-zone {
+  position: fixed;
+  bottom: 0; left: 0;
+  width: 100%; height: 4px;
+  cursor: ns-resize;
+  z-index: 9999;
+  background: transparent;
+  transition: background 0.1s;
+}
+
+#edge-zone:hover,
+#edge-zone.snap {
+  background: #ff764d;
+}
+
+/* ── Panel tabs ─────────────────────────────────────────────── */
+
+#panel-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 8px;
+  background: #1e1e1e;
+  border-bottom: 1px solid #3a3a3a;
+  flex-shrink: 0;
+}
+
+.panel-tab {
+  background: transparent;
+  color: #666;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 4px 12px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.panel-tab:hover {
+  color: #b0b0b0;
+}
+
+.panel-tab.active {
+  color: #b0b0b0;
+  border-bottom-color: #ff764d;
+}
+
+/* ── Panel content ──────────────────────────────────────────── */
+
+#panel-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+#timeline-tab {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -178,7 +251,7 @@ canvas {
   gap: 8px;
 }
 
-#transport button {
+#bottom-panel button:not(.panel-tab) {
   background: #333;
   color: #b0b0b0;
   border: 1px solid #4a4a4a;
@@ -190,16 +263,16 @@ canvas {
   line-height: 1;
 }
 
-#transport button:hover {
+#bottom-panel button:not(.panel-tab):hover {
   background: #444;
 }
 
-#transport button:disabled {
+#bottom-panel button:not(.panel-tab):disabled {
   opacity: 0.3;
   cursor: default;
 }
 
-#transport button.active {
+#bottom-panel button:not(.panel-tab).active {
   background: #ff764d;
   border-color: #ff764d;
   color: #fff;

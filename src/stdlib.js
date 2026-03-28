@@ -1,10 +1,10 @@
 // Standard library — shapes, directives, math.
 // Everything here is injected into user code as top-level names.
 
-import { Color } from '../lib/color.js';
-import { $loop, $beat, $beats, tween } from '../audio/intervals.js';
-import { vec2 } from '../lib/vec.js';
-import { complex } from '../lib/complex.js';
+import { Color } from './lib/color.js';
+import { $loop, $beat, $beats, tween } from './audio/intervals.js';
+import { vec2 } from './lib/vec.js';
+import { complex } from './lib/complex.js';
 import { probe } from './probe.js';
 import { setRendererP5, renderScene } from './renderer.js';
 import {
@@ -21,7 +21,7 @@ import {
   easeInBounce,  easeOutBounce,  easeInOutBounce,
   cubicBezier,
   spring,
-} from '../lib/easing.js';
+} from './lib/easing.js';
 
 // ── p5 instance (set once during init) ────────────────────────────
 export function setP5(p) { setRendererP5(p); }

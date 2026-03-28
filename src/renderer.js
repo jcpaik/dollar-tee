@@ -1,7 +1,7 @@
 // Renderer — walks scene array, applies directives, draws shapes.
 // Supports p5.js (primary) and Canvas2D fallback.
 
-import { Color } from '../lib/color.js';
+import { Color } from './lib/color.js';
 
 let _p5 = null;
 export function setRendererP5(p) { _p5 = p; }

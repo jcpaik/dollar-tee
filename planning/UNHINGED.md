@@ -633,6 +633,34 @@ Not wired to `$` variables — purely visual aids:
 
 All of these are toggled via a toolbar button or keyboard shortcut, not via code.
 
+### The two-editor problem: render loop vs event console
+
+The current editor runs code at 60fps. Everything in it is a per-frame expression. But locators (and other things) need **one-shot actions** — things that happen once, not 60 times per second:
+
+- Create a locator: `addLocator('$p1', vec2(200, 200))`
+- Delete one: `removeLocator('$p1')`
+- Set a persistent value: `$radius = 50`
+- Trigger a state reset: `clearAll()`
+- Import a resource: `loadImage('cat.png')`
+
+These are **events**, not per-frame computations. Running them at 60fps either wastes work or causes bugs (recreating the locator every frame, resetting state every frame, etc.).
+
+**Possible directions:**
+
+**A. Separate console pane.** A REPL / command line below the editor. You type a line, hit enter, it executes once. Like a browser devtools console but wired into the dollar-tee runtime. The render editor is for per-frame code; the console is for one-shot commands.
+
+**B. Setup block.** A special section in the editor that runs once on compile, not per frame. Like p5's `setup()` vs `draw()`. Could be a comment marker (`// --- setup ---`) or a separate tab.
+
+**C. UI-only for events.** No code for one-shot actions — they're all UI interactions (right-click menu, toolbar buttons, keyboard shortcuts). Code never fires events. Keeps the "code = per-frame" contract pure.
+
+**D. Smart detection.** The compiler detects which expressions are "setup-like" (calls to `addLocator`, `loadImage`, etc.) and hoists them out of the frame loop automatically. Magic but fragile.
+
+**The tension:** dollar-tee's identity is "one editor, one render loop, everything is live." A second console adds power but breaks the simplicity. But trying to cram events into a 60fps loop is wrong too.
+
+**Open question:** Is this just about locators, or is there a broader need for an event/command layer? If it's only locators, Option C (pure UI) is fine. If users will want to script one-shot actions generally, a console (A) or setup block (B) becomes necessary.
+
+---
+
 ### Connection to existing `$mouse`
 
 `$mouse` is already a reactive vec2. Locators are the same concept but user-placed and persistent. `$mouse` is the "built-in locator that follows your cursor." Custom locators are "mouse positions you pinned down."

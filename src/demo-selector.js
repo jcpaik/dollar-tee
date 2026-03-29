@@ -18,9 +18,24 @@ export function createSketchSelector(selectEl, listSketches) {
     if (_onChange) _onChange(selectEl.value);
   });
 
+  function setShared() {
+    const opt = document.createElement('option');
+    opt.value = '__shared__';
+    opt.textContent = '(shared)';
+    selectEl.prepend(opt);
+    selectEl.value = '__shared__';
+  }
+
+  function clearShared() {
+    const opt = selectEl.querySelector('option[value="__shared__"]');
+    if (opt) opt.remove();
+  }
+
   return {
     rebuild,
     select(val) { selectEl.value = val; },
     onChange(cb) { _onChange = cb; },
+    setShared,
+    clearShared,
   };
 }

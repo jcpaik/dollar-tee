@@ -11,6 +11,7 @@ import { watch } from './watch.js';
 import { updateLoopTime } from './audio/intervals.js';
 import { fetchSketches, listSketches, getSketchCode, saveSketch } from './sketch-store.js';
 import { createSketchSelector } from './demo-selector.js';
+import { updateHash, decodeFromHash } from './url-share.js';
 import { setupTransport } from './audio/transport.js';
 import { setupLayout } from './ui/layout.js';
 import { setupLocators, getLocatorGetters, syncOverlay, toggleLocators, restoreLocators } from './locators/main.js';
@@ -67,11 +68,14 @@ if (savedAutoRun !== undefined) autoRunBox.checked = savedAutoRun;
 autoRunBox.addEventListener('change', () => saveUI('autorun', autoRunBox.checked));
 
 let debounceTimer = null;
+let hashTimer = null;
 editor.onChange(() => {
   if (autoRunBox.checked) {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(run, 300);
   }
+  clearTimeout(hashTimer);
+  hashTimer = setTimeout(() => updateHash(editor.getCode()), 1000);
 });
 editor.onSliderChange(() => run());
 
@@ -90,10 +94,12 @@ selector.rebuild();
 selector.onChange((name) => {
   currentSketchName = name;
   saveUI('sketch', name);
+  selector.clearShared();
   const code = getSketchCode(name);
   if (code == null) return;
   editor.setCode(code);
   run();
+  updateHash(code);
 });
 
 async function save() {
@@ -112,6 +118,25 @@ document.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); run(); }
   if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); save(); }
   if ((e.ctrlKey || e.metaKey) && e.key === 'l') { e.preventDefault(); toggleLocators(); }
+});
+
+// ── Share button ──
+
+const shareBtn = document.getElementById('share-btn');
+let shareResetTimer = null;
+shareBtn.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(location.href);
+    shareBtn.textContent = 'Copied!';
+    shareBtn.classList.add('copied');
+  } catch {
+    shareBtn.textContent = 'Failed';
+  }
+  clearTimeout(shareResetTimer);
+  shareResetTimer = setTimeout(() => {
+    shareBtn.textContent = 'Share';
+    shareBtn.classList.remove('copied');
+  }, 1500);
 });
 
 // ── Canvas resize ──
@@ -195,25 +220,33 @@ document.getElementById('panel-tabs').addEventListener('click', (e) => {
 
 // ── Boot ──
 
-const savedSketch = load('sketch');
-const bootSketch = (savedSketch && listSketches().includes(savedSketch))
-  ? savedSketch
-  : listSketches()[0];
+const sharedCode = await decodeFromHash();
 
-if (bootSketch) {
-  currentSketchName = bootSketch;
-  editor.setCode(getSketchCode(bootSketch));
-  selector.select(bootSketch);
+if (sharedCode) {
+  editor.setCode(sharedCode);
+  selector.setShared();
+} else {
+  const savedSketch = load('sketch');
+  const bootSketch = (savedSketch && listSketches().includes(savedSketch))
+    ? savedSketch
+    : listSketches()[0];
 
-  const savedCursor = load('cursor');
-  if (savedCursor && bootSketch === savedSketch) {
-    const docLen = editor.view.state.doc.length;
-    const anchor = Math.min(savedCursor.anchor, docLen);
-    const head = Math.min(savedCursor.head, docLen);
-    editor.view.dispatch({ selection: EditorSelection.range(anchor, head) });
-    if (savedCursor.scroll != null) {
-      requestAnimationFrame(() => { editor.view.scrollDOM.scrollTop = savedCursor.scroll; });
+  if (bootSketch) {
+    currentSketchName = bootSketch;
+    editor.setCode(getSketchCode(bootSketch));
+    selector.select(bootSketch);
+
+    const savedCursor = load('cursor');
+    if (savedCursor && bootSketch === savedSketch) {
+      const docLen = editor.view.state.doc.length;
+      const anchor = Math.min(savedCursor.anchor, docLen);
+      const head = Math.min(savedCursor.head, docLen);
+      editor.view.dispatch({ selection: EditorSelection.range(anchor, head) });
+      if (savedCursor.scroll != null) {
+        requestAnimationFrame(() => { editor.view.scrollDOM.scrollTop = savedCursor.scroll; });
+      }
     }
   }
+  updateHash(editor.getCode());
 }
 run();

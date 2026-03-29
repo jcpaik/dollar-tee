@@ -49,7 +49,7 @@ export async function decodeFromHash() {
     // Messaging apps (KakaoTalk, Slack, iMessage, etc.) mangle URLs via
     // "smart" typography: "--" → em dash, inserted zero-width chars, etc.
     // None of these are valid base64url, so strip/replace them safely.
-    const payload = hash.slice(6)
+    const payload = decodeURIComponent(hash.slice(6))
       .replace(/[\u200B\u200C\u200D\uFEFF\u00AD]/g, '')       // zero-width / soft-hyphen
       .replace(/[\u2014\u2015\uFE58]/g, '--')                  // em dash variants → --
       .replace(/[\u2010-\u2013\u2212\uFE63\uFF0D]/g, '-');     // en dash / minus variants → -

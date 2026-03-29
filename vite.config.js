@@ -65,8 +65,28 @@ function sketchesApiPlugin() {
   };
 }
 
+function sketchesBundlePlugin() {
+  return {
+    name: 'sketches-bundle',
+    writeBundle(options) {
+      const outDir = options.dir || path.resolve(__dirname, 'dist');
+      const files = fs.readdirSync(SKETCHES_DIR)
+        .filter(f => f.endsWith('.js'))
+        .sort();
+      const sketches = files.map(f => ({
+        name: f.replace(/\.js$/, ''),
+        code: fs.readFileSync(path.join(SKETCHES_DIR, f), 'utf-8'),
+      }));
+      fs.writeFileSync(
+        path.join(outDir, 'sketches.json'),
+        JSON.stringify(sketches),
+      );
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [sketchesApiPlugin()],
+  plugins: [sketchesApiPlugin(), sketchesBundlePlugin()],
   server: {
     watch: {
       ignored: ['**/sketches/**'],

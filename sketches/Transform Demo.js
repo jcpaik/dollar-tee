@@ -19,7 +19,7 @@ const groups = range({i: 6})
         Stroke(Color.hsl(i * 60 + $time * 30, 70, 75)),
         NoFill(),
         LineWidth(2),
-        Ngon(0, 0, 40, 4 + i, 0),
+        Polygon(range(4 + i).map(k => [cos(k/(4+i)*TWO_PI)*40, sin(k/(4+i)*TWO_PI)*40])),
       ],
     ]
   })

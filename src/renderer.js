@@ -124,9 +124,11 @@ function drawShape(shape, state) {
       p.line(shape.x1, shape.y1, shape.x2, shape.y2);
       break;
     case 'polyline':
+      p.noFill();
       p.beginShape();
       for (const pt of shape.pts) p.vertex(pt.x, pt.y);
       p.endShape();
+      if (state.fill) p.fill(state.fill);
       break;
     case 'ellipse':
       p.ellipse(shape.x, shape.y, Math.max(0, shape.rx) * 2, Math.max(0, shape.ry) * 2);

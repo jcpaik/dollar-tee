@@ -4,6 +4,8 @@ import { EditorView, basicSetup } from 'codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorState } from '@codemirror/state';
+import { keymap } from '@codemirror/view';
+import { indentWithTab } from '@codemirror/commands';
 import { valSliderExtension, valSliderChange } from './val-slider.js';
 import { colorPickerExtension, colorPickerChange } from './color-picker.js';
 
@@ -15,6 +17,7 @@ export function createEditor(parent) {
     doc: '',
     extensions: [
       basicSetup,
+      keymap.of([indentWithTab]),
       javascript(),
       oneDark,
       valSliderExtension(),

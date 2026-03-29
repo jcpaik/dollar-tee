@@ -7,7 +7,7 @@ import { createAudio } from './audio/audio.js';
 import { createTimeline, FIRST_BEAT } from './audio/timeline.js';
 import { compile } from './compiler.js';
 import { stdlib, setP5, updateReactiveState } from './stdlib.js';
-import { probe } from './probe.js';
+import { watch } from './watch.js';
 import { updateLoopTime } from './audio/intervals.js';
 import { fetchSketches, listSketches, getSketchCode, saveSketch } from './sketch-store.js';
 import { createSketchSelector } from './demo-selector.js';
@@ -37,7 +37,7 @@ const stateStdlib = {
 };
 
 function run() {
-  probe.clear();
+  watch.clear();
   try {
     const allStdlib = Object.defineProperties(
       { ...stateStdlib },
@@ -50,7 +50,7 @@ function run() {
     engine.setDraw(drawFn);
     errorBar.style.display = 'none';
   } catch (e) {
-    errorBar.textContent = e.loc ? `Line ${e.loc.line}: ${e.message}` : e.message;
+    errorBar.textContent = e.loc ? `Line ${e.loc.line}:${e.loc.col}: ${e.message}` : e.message;
     errorBar.style.display = 'block';
   }
 }
@@ -147,11 +147,11 @@ engine.onPreTick = (t) => {
 };
 
 engine.onTick = (t) => {
-  timeDisplay.textContent = 't = ' + t.toFixed(2);
+  timeDisplay.textContent = '$time = ' + t.toFixed(2);
   frameCount++;
   const now = performance.now();
   if (now - lastFpsTime >= 1000) {
-    fpsDisplay.textContent = frameCount + ' fps | draw ' + engine.getDrawMs().toFixed(1) + 'ms';
+    fpsDisplay.innerHTML = frameCount + ' fps<br>draw ' + engine.getDrawMs().toFixed(1) + 'ms';
     frameCount = 0;
     lastFpsTime = now;
   }
@@ -162,7 +162,7 @@ engine.onTick = (t) => {
 };
 
 engine.onError = (e) => {
-  errorBar.textContent = e.loc ? `Line ${e.loc.line}: ${e.message}` : e.message;
+  errorBar.textContent = e.loc ? `Line ${e.loc.line}:${e.loc.col}: ${e.message}` : e.message;
   errorBar.style.display = 'block';
 };
 
@@ -181,6 +181,17 @@ function saveCursor() {
 }
 editor.view.dom.addEventListener('focusout', saveCursor);
 window.addEventListener('beforeunload', saveCursor);
+
+// ── Panel tabs ──
+
+document.getElementById('panel-tabs').addEventListener('click', (e) => {
+  const btn = e.target.closest('.panel-tab');
+  if (!btn || !btn.dataset.tab) return;
+  document.querySelectorAll('.panel-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('#panel-content > div').forEach(el => el.style.display = 'none');
+  document.getElementById(btn.dataset.tab).style.display = '';
+});
 
 // ── Boot ──
 
@@ -206,4 +217,3 @@ if (bootSketch) {
   }
 }
 run();
-engine.start();

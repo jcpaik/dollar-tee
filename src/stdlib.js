@@ -5,7 +5,7 @@ import { Color } from './lib/color.js';
 import { $loop, $beat, $beats, tween } from './audio/intervals.js';
 import { vec2, Vec2 } from './lib/vec.js';
 import { complex } from './lib/complex.js';
-import { probe } from './probe.js';
+import { watch } from './watch.js';
 import { setRendererP5, renderScene } from './renderer.js';
 import {
   easeLinear,
@@ -391,7 +391,7 @@ export const stdlib = {
   vec2, complex,
 
   // Helpers
-  val, make3D, draw, range, probe, zip, zipWith,
+  val, make3D, draw, range, watch, zip, zipWith,
 
   // p5 constants — text alignment
   LEFT: 'left', CENTER: 'center', RIGHT: 'right',

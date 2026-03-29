@@ -12,9 +12,10 @@
       <div id="toolbar">
         <select id="demo-select"></select>
         <label><input type="checkbox" id="auto-run" checked> Auto</label>
-        <span class="time-display" id="time-display">t = 0.00</span>
+        <button id="play-pause-btn" title="Play / Pause time">&#9654;</button>
+        <span class="time-display" id="time-display">$time = 0.00</span>
         <span class="fps-display" id="fps-display"></span>
-        <span class="hint">Ctrl-Enter to run · Ctrl-S to save</span>
+        <span class="hint">Ctrl-Enter to run<br>Ctrl-S to save</span>
       </div>
       <div id="editor-container"></div>
       <div id="error-bar"></div>
@@ -26,14 +27,15 @@
   <div id="bottom-panel">
     <div id="h-sash" title="Drag to resize, double-click to toggle"></div>
     <div id="panel-tabs">
-      <button class="panel-tab active">Timeline</button>
+      <button class="panel-tab active" data-tab="watch-tab">Watch</button>
+      <button class="panel-tab" data-tab="timeline-tab">Timeline</button>
     </div>
     <div id="panel-content">
-      <div id="timeline-tab">
+      <div id="watch-tab"></div>
+      <div id="timeline-tab" style="display:none">
         <div id="transport-controls">
           <button id="music-toggle" title="Toggle music mode">&#9835; Off</button>
           <input type="file" id="audio-file" accept="audio/*" hidden>
-          <button id="play-btn" title="Play / Pause" disabled>&#9654;</button>
           <span id="audio-time">&mdash;:&mdash;&mdash;</span>
           <button id="snap-btn" class="active" title="Snap to grid">Snap</button>
         </div>

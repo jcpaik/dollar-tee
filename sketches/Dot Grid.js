@@ -1,9 +1,10 @@
 // 2D parameter space mapped to visual properties
-// Nested Ngons from a range
+// Nested regular polygons from a range
 const ngons = range([1, 6])
-  .map(i =>
-    Ngon($width/2, $height/2, min($width,$height) * 0.05 * i, 3 + i, $time * (0.5 + i * 0.1))
-  )
+  .map(i => {
+    const sides = 3 + i, r = min($width,$height) * 0.05 * i, a = $time * (0.5 + i * 0.1)
+    return Polygon(range(sides).map(k => [$width/2 + cos(a + k/sides*TWO_PI)*r, $height/2 + sin(a + k/sides*TWO_PI)*r]))
+  })
 
 // 2D grid — range creates the position space, mapWith derives values
 const dots = range({

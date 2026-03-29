@@ -15,7 +15,7 @@ const polys = range({j: [0, 2]})
     NoFill(),
     Stroke(Color.hsl($time * 50 + j * 120, 80, 55)),
     LineWidth(2),
-    Ngon(cx, cy, r, sides, angle),
+    Polygon(range(sides).map(k => [cx + cos(angle + k/sides*TWO_PI)*r, cy + sin(angle + k/sides*TWO_PI)*r])),
   ])
 
 render(polys)
